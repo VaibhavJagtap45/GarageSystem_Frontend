@@ -1,0 +1,73 @@
+{
+  "expo": {
+    "name": "ApnoGarage",
+    "slug": "apnogarage",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "apnogarage",
+    "userInterfaceStyle": "light",
+
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+
+    "assetBundlePatterns": ["**/*"],
+
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.albos.apnogarage",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSContactsUsageDescription": "ApnoGarage uses your contacts to quickly add customers to your garage records.",
+        "NSPhotoLibraryUsageDescription": "ApnoGarage needs access to your photo library to upload your garage logo.",
+        "NSCameraUsageDescription": "ApnoGarage uses the camera to capture your garage logo photo."
+      }
+    },
+
+    "android": {
+      "package": "com.albos.apnogarage",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "permissions": [
+        "android.permission.READ_CONTACTS",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.CAMERA",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
+    },
+
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ApnoGarage needs access to your photos to upload a garage logo.",
+          "cameraPermission": "ApnoGarage uses the camera to capture your garage logo."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "ApnoGarage uses your contacts to quickly add customers."
+        }
+      ]
+    ],
+
+    "extra": {
+      "eas": {
+        "projectId": "c1dcd4be-3980-4a53-a546-bd11a40bd27f"
+      }
+    }
+  }
+}

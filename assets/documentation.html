@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ApnoGarage — Complete Project Documentation</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:       #1d4ed8;
+      --blue-light: #dbeafe;
+      --green:      #16a34a;
+      --green-light:#dcfce7;
+      --amber:      #d97706;
+      --amber-light:#fef3c7;
+      --purple:     #7c3aed;
+      --purple-light:#ede9fe;
+      --red:        #dc2626;
+      --red-light:  #fee2e2;
+      --gray-50:    #f9fafb;
+      --gray-100:   #f3f4f6;
+      --gray-200:   #e5e7eb;
+      --gray-300:   #d1d5db;
+      --gray-500:   #6b7280;
+      --gray-700:   #374151;
+      --gray-900:   #111827;
+      --white:      #ffffff;
+      --border:     #e5e7eb;
+      --radius:     8px;
+    }
+
+    html { font-size: 14px; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: var(--gray-900);
+      background: var(--white);
+      line-height: 1.65;
+    }
+
+    /* ── Print Setup ──────────────────────────────────────────── */
+    @page {
+      size: A4;
+      margin: 18mm 15mm 18mm 15mm;
+    }
+    @media print {
+      .no-print      { display: none !important; }
+      .page-break    { page-break-before: always; }
+      .avoid-break   { page-break-inside: avoid; }
+      body           { font-size: 11px; }
+      .cover         { min-height: 100vh; }
+    }
+
+    /* ── Layout ───────────────────────────────────────────────── */
+    .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Print Button ─────────────────────────────────────────── */
+    .print-bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: var(--blue); color: var(--white);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 24px; font-size: 13px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .print-bar span { font-weight: 600; letter-spacing: 0.3px; }
+    .btn-print {
+      background: var(--white); color: var(--blue);
+      border: none; border-radius: 6px;
+      padding: 7px 18px; font-weight: 700; font-size: 13px;
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    .btn-print:hover { opacity: 0.85; }
+
+    /* ── Cover Page ───────────────────────────────────────────── */
+    .cover {
+      min-height: 96vh;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      text-align: center;
+      padding: 60px 32px;
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #3b82f6 100%);
+      color: var(--white);
+      border-radius: 0 0 40px 40px;
+    }
+    .cover-logo {
+      width: 90px; height: 90px; border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: 3px solid rgba(255,255,255,0.4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 42px; font-weight: 900;
+      margin: 0 auto 28px;
+      color: var(--white);
+    }
+    .cover h1 {
+      font-size: 2.6rem; font-weight: 900;
+      letter-spacing: -0.5px; margin-bottom: 10px;
+    }
+    .cover .tagline {
+      font-size: 1.05rem; opacity: 0.85; margin-bottom: 32px;
+      max-width: 480px;
+    }
+    .cover-meta {
+      display: flex; gap: 24px; flex-wrap: wrap; justify-content: center;
+      margin-top: 16px;
+    }
+    .cover-meta-item {
+      background: rgba(255,255,255,0.15);
+      border-radius: 8px; padding: 10px 20px;
+      font-size: 0.85rem; font-weight: 600;
+    }
+    .cover-meta-item span { display: block; opacity: 0.7; font-weight: 400; font-size: 0.78rem; }
+
+    /* ── Section Headings ─────────────────────────────────────── */
+    .doc-section { padding: 40px 0 20px; }
+    .doc-section + .doc-section { border-top: 2px solid var(--gray-100); }
+
+    h2 {
+      font-size: 1.5rem; font-weight: 800; color: var(--blue);
+      padding-bottom: 8px; margin-bottom: 20px;
+      border-bottom: 3px solid var(--blue-light);
+      letter-spacing: -0.2px;
+    }
+    h2 .section-num {
+      display: inline-block;
+      background: var(--blue); color: var(--white);
+      border-radius: 6px; padding: 2px 10px;
+      font-size: 0.8rem; font-weight: 700;
+      margin-right: 10px; vertical-align: middle;
+    }
+    h3 {
+      font-size: 1.05rem; font-weight: 700; color: var(--gray-900);
+      margin: 20px 0 10px;
+    }
+    h4 {
+      font-size: 0.9rem; font-weight: 700; color: var(--gray-700);
+      margin: 14px 0 6px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    p { margin-bottom: 10px; color: var(--gray-700); }
+
+    /* ── Role Cards ───────────────────────────────────────────── */
+    .role-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 16px; margin: 20px 0;
+    }
+    .role-card {
+      border-radius: var(--radius); padding: 20px;
+      border-left: 5px solid; border: 1px solid var(--border);
+      border-left-width: 5px;
+    }
+    .role-card.owner   { border-left-color: var(--blue);   background: var(--blue-light);   }
+    .role-card.member  { border-left-color: var(--green);  background: var(--green-light);  }
+    .role-card.customer{ border-left-color: var(--amber);  background: var(--amber-light);  }
+    .role-card h3 { margin-top: 0; font-size: 1rem; }
+    .role-card.owner   h3 { color: var(--blue);   }
+    .role-card.member  h3 { color: var(--green);  }
+    .role-card.customer h3{ color: var(--amber);  }
+    .role-card p { font-size: 0.88rem; margin-bottom: 0; color: var(--gray-700); }
+
+    /* ── Feature List ─────────────────────────────────────────── */
+    .feature-list {
+      list-style: none; padding: 0; margin: 0 0 14px;
+    }
+    .feature-list li {
+      padding: 7px 0 7px 24px; position: relative;
+      border-bottom: 1px solid var(--gray-100);
+      font-size: 0.9rem; color: var(--gray-700);
+    }
+    .feature-list li:last-child { border-bottom: none; }
+    .feature-list li::before {
+      content: "✓"; position: absolute; left: 0;
+      color: var(--green); font-weight: 700;
+    }
+
+    /* ── Step-by-step Guide ───────────────────────────────────── */
+    .steps { margin: 14px 0; }
+    .step {
+      display: flex; gap: 14px; margin-bottom: 16px;
+      padding: 14px 16px;
+      background: var(--gray-50); border-radius: var(--radius);
+      border: 1px solid var(--gray-200);
+    }
+    .step-num {
+      min-width: 32px; height: 32px; border-radius: 50%;
+      background: var(--blue); color: var(--white);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.88rem; flex-shrink: 0;
+    }
+    .step-content h4 { margin: 0 0 4px; font-size: 0.9rem; color: var(--gray-900); text-transform: none; letter-spacing: 0; }
+    .step-content p  { margin: 0; font-size: 0.85rem; }
+
+    /* ── Tech Stack Table ─────────────────────────────────────── */
+    .tech-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; margin: 16px 0;
+    }
+    .tech-item {
+      background: var(--gray-50); border: 1px solid var(--gray-200);
+      border-radius: var(--radius); padding: 12px 16px;
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .tech-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .tech-item h4  { margin: 0; font-size: 0.85rem; text-transform: none; letter-spacing: 0; color: var(--gray-900); }
+    .tech-item p   { margin: 2px 0 0; font-size: 0.78rem; color: var(--gray-500); }
+
+    /* ── Tables ───────────────────────────────────────────────── */
+    table {
+      width: 100%; border-collapse: collapse;
+      margin: 12px 0 20px; font-size: 0.85rem;
+    }
+    thead th {
+      background: var(--blue); color: var(--white);
+      padding: 9px 12px; text-align: left; font-weight: 700;
+      font-size: 0.8rem; letter-spacing: 0.3px;
+    }
+    tbody tr:nth-child(odd)  { background: var(--gray-50); }
+    tbody tr:nth-child(even) { background: var(--white); }
+    tbody td { padding: 8px 12px; border-bottom: 1px solid var(--gray-200); vertical-align: top; }
+    tbody td:first-child { font-weight: 600; white-space: nowrap; color: var(--gray-900); }
+
+    /* ── API Endpoint blocks ──────────────────────────────────── */
+    .endpoints { margin: 10px 0; }
+    .endpoint {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 7px 12px; border-bottom: 1px solid var(--gray-100);
+      font-size: 0.83rem;
+    }
+    .endpoint:last-child { border-bottom: none; }
+    .method {
+      display: inline-block; min-width: 46px; text-align: center;
+      padding: 2px 6px; border-radius: 4px; font-weight: 700;
+      font-size: 0.7rem; flex-shrink: 0; margin-top: 1px;
+    }
+    .get    { background: #dcfce7; color: #15803d; }
+    .post   { background: #dbeafe; color: #1d4ed8; }
+    .put    { background: #fef3c7; color: #b45309; }
+    .delete { background: #fee2e2; color: #b91c1c; }
+    .endpoint code {
+      font-family: 'Courier New', monospace; font-size: 0.8rem;
+      color: var(--gray-900); font-weight: 600; flex: 1;
+    }
+    .endpoint-desc { font-size: 0.78rem; color: var(--gray-500); }
+
+    .endpoint-group {
+      background: var(--gray-50); border-radius: var(--radius);
+      border: 1px solid var(--gray-200); margin: 12px 0; overflow: hidden;
+    }
+    .endpoint-group-title {
+      background: var(--gray-200); padding: 7px 14px;
+      font-weight: 700; font-size: 0.8rem; color: var(--gray-700);
+      letter-spacing: 0.3px; text-transform: uppercase;
+    }
+
+    /* ── Workflow cards ───────────────────────────────────────── */
+    .workflow { display: flex; gap: 0; margin: 16px 0; overflow: hidden; border-radius: var(--radius); border: 1px solid var(--gray-200); }
+    .workflow-step {
+      flex: 1; padding: 14px 10px; text-align: center;
+      border-right: 1px solid var(--gray-200); position: relative;
+      font-size: 0.78rem;
+    }
+    .workflow-step:last-child { border-right: none; }
+    .workflow-step .ws-icon {
+      font-size: 1.4rem; display: block; margin-bottom: 6px;
+    }
+    .workflow-step .ws-label { font-weight: 700; display: block; color: var(--gray-900); margin-bottom: 2px; }
+    .workflow-step .ws-sub   { color: var(--gray-500); font-size: 0.72rem; }
+
+    /* ── Badge / Pill ─────────────────────────────────────────── */
+    .badge {
+      display: inline-block; padding: 2px 10px; border-radius: 99px;
+      font-size: 0.72rem; font-weight: 700;
+    }
+    .badge-blue   { background: var(--blue-light);   color: var(--blue);   }
+    .badge-green  { background: var(--green-light);  color: var(--green);  }
+    .badge-amber  { background: var(--amber-light);  color: var(--amber);  }
+    .badge-purple { background: var(--purple-light); color: var(--purple); }
+    .badge-red    { background: var(--red-light);    color: var(--red);    }
+
+    /* ── Info Box ─────────────────────────────────────────────── */
+    .info-box {
+      border-radius: var(--radius); padding: 14px 16px;
+      margin: 12px 0; border-left: 4px solid;
+      font-size: 0.88rem;
+    }
+    .info-box.blue   { background: var(--blue-light);   border-left-color: var(--blue);   color: #1e3a8a; }
+    .info-box.green  { background: var(--green-light);  border-left-color: var(--green);  color: #14532d; }
+    .info-box.amber  { background: var(--amber-light);  border-left-color: var(--amber);  color: #78350f; }
+    .info-box p { margin: 0; }
+
+    /* ── Screenshot placeholder ───────────────────────────────── */
+    .screen-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 12px; margin: 14px 0;
+    }
+    .screen-item {
+      background: var(--gray-100); border-radius: var(--radius);
+      border: 1px solid var(--gray-200); padding: 12px 10px;
+      text-align: center;
+    }
+    .screen-icon { font-size: 1.8rem; display: block; margin-bottom: 6px; }
+    .screen-name { font-size: 0.75rem; font-weight: 600; color: var(--gray-700); }
+    .screen-desc { font-size: 0.68rem; color: var(--gray-500); margin-top: 2px; }
+
+    /* ── TOC ──────────────────────────────────────────────────── */
+    .toc { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 20px 24px; margin: 30px 0; }
+    .toc h3 { margin-top: 0; color: var(--blue); }
+    .toc ol { padding-left: 20px; }
+    .toc li { padding: 3px 0; font-size: 0.88rem; }
+    .toc a  { color: var(--blue); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    /* ── Footer ───────────────────────────────────────────────── */
+    .doc-footer {
+      text-align: center; padding: 40px 20px;
+      border-top: 2px solid var(--gray-100);
+      color: var(--gray-500); font-size: 0.82rem;
+    }
+    .doc-footer strong { color: var(--blue); }
+
+    /* ── Divider ──────────────────────────────────────────────── */
+    hr { border: none; border-top: 2px solid var(--gray-100); margin: 28px 0; }
+  </style>
+</head>
+<body>
+
+<!-- Print Bar -->
+<div class="print-bar no-print">
+  <span>📄 ApnoGarage — Project Documentation</span>
+  <button class="btn-print" onclick="window.print()">🖨️ Save as PDF / Print</button>
+</div>
+
+<div style="padding-top: 48px;" class="no-print"></div>
+
+<div class="container">
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  COVER                                                      -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="cover">
+    <div class="cover-logo">A</div>
+    <h1>ApnoGarage</h1>
+    <p class="tagline">Complete Garage Management System — Technical &amp; User Documentation</p>
+
+    <div class="cover-meta">
+      <div class="cover-meta-item">
+        Version 1.0
+        <span>Current Release</span>
+      </div>
+      <div class="cover-meta-item">
+        React Native + Node.js
+        <span>Technology Stack</span>
+      </div>
+      <div class="cover-meta-item">
+        3 User Roles
+        <span>Owner · Member · Customer</span>
+      </div>
+      <div class="cover-meta-item">
+        Mobile Application
+        <span>iOS &amp; Android</span>
+      </div>
+    </div>
+
+    <p style="margin-top:36px; font-size:0.82rem; opacity:0.65;">
+      Prepared for client delivery · Confidential
+    </p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  TABLE OF CONTENTS                                          -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="toc">
+    <h3>Table of Contents</h3>
+    <ol>
+      <li><a href="#overview">Project Overview</a></li>
+      <li><a href="#roles">User Roles</a></li>
+      <li><a href="#tech">Technology Stack</a></li>
+      <li><a href="#architecture">System Architecture</a></li>
+      <li><a href="#owner-guide">Owner Portal — User Guide</a></li>
+      <li><a href="#member-guide">Member (Mechanic) Portal — User Guide</a></li>
+      <li><a href="#customer-guide">Customer Portal — User Guide</a></li>
+      <li><a href="#api">API Reference</a></li>
+      <li><a href="#database">Database Models</a></li>
+      <li><a href="#screens">Screen Reference</a></li>
+      <li><a href="#security">Security</a></li>
+      <li><a href="#setup">Setup &amp; Deployment</a></li>
+    </ol>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  1. PROJECT OVERVIEW                                        -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="doc-section" id="overview">
+    <h2><span class="section-num">1</span> Project Overview</h2>
+
+    <p>
+      <strong>ApnoGarage</strong> is a full-featured mobile garage management system built for auto repair
+      businesses. It connects three types of users — garage <strong>owners</strong>, repair
+      <strong>members (mechanics)</strong>, and <strong>customers</strong> — on a single platform,
+      enabling end-to-end management of repair orders, inventory, invoices, and team operations.
+    </p>
+
+    <div class="info-box blue">
+      <p>
+        <strong>Core Purpose:</strong> Replace paper-based job cards, spreadsheet invoicing, and
+        manual parts tracking with a single mobile app that works for the garage owner, their team,
+        and their customers simultaneously.
+      </p>
+    </div>
+
+    <h3>What the System Does</h3>
+    <ul class="feature-list">
+      <li>Create and manage repair orders from vehicle drop-off to completion</li>
+      <li>Assign jobs to mechanics and track their real-time status</li>
+      <li>Generate professional PDF invoices with garage logo</li>
+      <li>Manage spare parts inventory with stock alerts</li>
+      <li>Track all customer vehicles and service history</li>
+      <li>Handle vendor purchase orders and stock-in records</li>
+      <li>Generate financial reports — daily, monthly, income/expense, tally export</li>
+      <li>Send invoices via WhatsApp/SMS directly from the app</li>
+      <li>Allow customers to browse services, track their own orders, and view invoices</li>
+      <li>Allow mechanics to accept/reject assignments and update job status on the go</li>
+      <li>OTP-based login (no passwords to remember or forget)</li>
+    </ul>
+
+    <h3>Order Lifecycle</h3>
+    <div class="workflow">
+      <div class="workflow-step" style="background:#fef3c7;">
+        <span class="ws-icon">📋</span>
+        <span class="ws-label">Created</span>
+        <span class="ws-sub">Order raised by owner or customer</span>
+      </div>
+      <div class="workflow-step" style="background:#ede9fe;">
+        <span class="ws-icon">🔧</span>
+        <span class="ws-label">Assigned</span>
+        <span class="ws-sub">Mechanic accepts the job</span>
+      </div>
+      <div class="workflow-step" style="background:#dbeafe;">
+        <span class="ws-icon">⚙️</span>
+        <span class="ws-label">In Progress</span>
+        <span class="ws-sub">Work underway</span>
+      </div>
+      <div class="workflow-step" style="background:#e0f2fe;">
+        <span class="ws-icon">🚗</span>
+        <span class="ws-label">Vehicle Ready</span>
+        <span class="ws-sub">Repair done, pending collection</span>
+      </div>
+      <div class="workflow-step" style="background:#dcfce7;">
+        <span class="ws-icon">✅</span>
+        <span class="ws-label">Completed</span>
+        <span class="ws-sub">Invoice raised &amp; payment collected</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  2. USER ROLES                                              -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="doc-section page-break" id="roles">
+    <h2><span class="section-num">2</span> User Roles</h2>
+
+    <div class="role-grid">
+      <div class="role-card owner">
+        <h3>🏪 Owner</h3>
+        <p>
+          The garage owner or manager. Has full access to all features — creates orders, manages
+          inventory, generates invoices, views all financial reports, and controls team access.
+        </p>
+      </div>
+      <div class="role-card member">
+        <h3>🔧 Member (Mechanic)</h3>
+        <p>
+          Garage staff / technicians. Can view work assigned to them, accept/reject jobs, update
+          order status, record parts used, and view available inventory.
+        </p>
+      </div>
+      <div class="role-card customer">
+        <h3>🧑‍💼 Customer</h3>
+        <p>
+          Vehicle owners. Can browse services, track their repair orders, view invoices, download PDF
+          bills, manage their vehicles, and update their profile.
+        </p>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Owner</th>
+          <th>Member</th>
+          <th>Customer</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Create Repair Orders</td><td>✅ Full</td><td>❌</td><td>✅ Self only</td></tr>
+        <tr><td>View Repair Orders</td><td>✅ All</td><td>✅ Assigned</td><td>✅ Own</td></tr>
+        <tr><td>Assign Mechanics</td><td>✅</td><td>❌</td><td>❌</td></tr>
+        <tr><td>Accept / Reject Jobs</td><td>❌</td><td>✅</td><td>❌</td></tr>
+        <tr><td>Update Job Status</td><td>✅</td><td>✅</td><td>❌</td></tr>
+        <tr><td>Generate Invoices</td><td>✅</td><td>❌</td><td>❌</td></tr>
+        <tr><td>View Invoices</td><td>✅ All</td><td>❌</td><td>✅ Own</td></tr>
+        <tr><td>Download PDF Invoice</td><td>✅</td><td>❌</td><td>✅</td></tr>
+        <tr><td>Manage Inventory</td><td>✅ Full</td><td>✅ View only</td><td>❌</td></tr>
+        <tr><td>Purchase Orders</td><td>✅</td><td>❌</td><td>❌</td></tr>
+        <tr><td>Financial Reports</td><td>✅</td><td>❌</td><td>❌</td></tr>
+        <tr><td>Manage Customers</td><td>✅</td><td>❌</td><td>❌</td></tr>
+        <tr><td>Manage Team</td><td>✅</td><td>❌</td><td>❌</td></tr>
+        <tr><td>Browse Services</td><td>✅</td><td>❌</td><td>✅</td></tr>
+        <tr><td>Manage Own Vehicles</td><td>❌</td><td>❌</td><td>✅</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  3. TECHNOLOGY STACK                                        -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="doc-section page-break" id="tech">
+    <h2><span class="section-num">3</span> Technology Stack</h2>
+
+    <h3>Frontend (Mobile Application)</h3>
+    <div class="tech-grid">
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#dbeafe;">📱</div>
+        <div>
+          <h4>React Native 0.81.5 + Expo SDK 54</h4>
+          <p>Cross-platform mobile framework. Single codebase runs on both iOS and Android.</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#ede9fe;">🧭</div>
+        <div>
+          <h4>React Navigation 7</h4>
+          <p>Native stack + bottom-tab navigators for smooth screen transitions.</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#dcfce7;">🗃️</div>
+        <div>
+          <h4>Redux Toolkit 2.11</h4>
+          <p>Global state management for auth session, garage data, and user info.</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#fef3c7;">🔗</div>
+        <div>
+          <h4>Axios 1.13</h4>
+          <p>HTTP client with auto token injection and response error normalisation.</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#fee2e2;">📄</div>
+        <div>
+          <h4>Expo Print + Expo Sharing</h4>
+          <p>HTML-to-PDF generation and native share sheet for invoice delivery.</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#dbeafe;">📦</div>
+        <div>
+          <h4>AsyncStorage</h4>
+          <p>Persistent local storage for auth tokens and session data.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>Backend (API Server)</h3>
+    <div class="tech-grid">
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#dcfce7;">🟢</div>
+        <div>
+          <h4>Node.js + Express 5.2</h4>
+          <p>RESTful API server handling all business logic and data operations.</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#fef3c7;">🍃</div>
+        <div>
+          <h4>MongoDB + Mongoose 9.3</h4>
+          <p>NoSQL database for flexible garage data storage and aggregations.</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#ede9fe;">🔐</div>
+        <div>
+          <h4>JWT + OTP Authentication</h4>
+          <p>Phone-based OTP login. Access + refresh token pair, no passwords.</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#fee2e2;">🛡️</div>
+        <div>
+          <h4>Zod + Helmet + Rate Limiter</h4>
+          <p>Input validation, security headers, and API rate limiting (500 req/15 min).</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#dbeafe;">📊</div>
+        <div>
+          <h4>XLSX + CSV Export</h4>
+          <p>Generate Excel and CSV reports for financial data and tally export.</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#dcfce7;">📤</div>
+        <div>
+          <h4>Multer</h4>
+          <p>File upload handling for garage logo and document attachments.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  4. SYSTEM ARCHITECTURE                                     -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="doc-section page-break" id="architecture">
+    <h2><span class="section-num">4</span> System Architecture</h2>
+
+    <div class="info-box blue">
+      <p>
+        ApnoGarage follows a standard <strong>Client–Server architecture</strong>. The mobile app
+        (React Native) communicates with the Node.js REST API over HTTPS. The API reads/writes data
+        from MongoDB and issues JWT tokens for authentication.
+      </p>
+    </div>
+
+    <h3>Architecture Diagram (Text Representation)</h3>
+    <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:20px; font-family:'Courier New',monospace; font-size:0.8rem; line-height:2; color:#374151;">
+┌─────────────────────────────────────────────────────────────────┐<br>
+│                    MOBILE APPLICATION (Expo)                    │<br>
+│  ┌──────────┐   ┌─────────────┐   ┌──────────────────────────┐ │<br>
+│  │  Owner   │   │   Member    │   │       Customer           │ │<br>
+│  │  Portal  │   │   Portal    │   │       Portal             │ │<br>
+│  └────┬─────┘   └──────┬──────┘   └────────────┬─────────────┘ │<br>
+│       └────────────────┼─────────────────────────┘             │<br>
+│                 Redux Store (auth)                              │<br>
+│                 Axios HTTP Client (Bearer token)                │<br>
+└───────────────────────┬─────────────────────────────────────────┘<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│ HTTPS REST API<br>
+┌───────────────────────▼─────────────────────────────────────────┐<br>
+│                  NODE.JS / EXPRESS SERVER                       │<br>
+│  ┌────────────┐  ┌──────────────┐  ┌──────────────────────────┐ │<br>
+│  │   Routes   │→ │  Controllers │→ │  Services / Validators   │ │<br>
+│  └────────────┘  └──────┬───────┘  └──────────────────────────┘ │<br>
+│                   ┌──────▼──────┐                               │<br>
+│                   │  Mongoose   │                               │<br>
+│                   └──────┬──────┘                               │<br>
+└──────────────────────────┼──────────────────────────────────────┘<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;┌─────────▼─────────┐<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│  MongoDB Database  │<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└───────────────────┘
+    </div>
+
+    <h3>Navigation Structure</h3>
+    <table>
+      <thead>
+        <tr><th>Navigator</th><th>Tabs / Stacks</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>AuthStack</td>
+          <td>GetStarted → Login → OTP</td>
+          <td>Pre-login flow for all users</td>
+        </tr>
+        <tr>
+          <td>GarageTabs (Owner)</td>
+          <td>Service · Parts · Accounts · More</td>
+          <td>Full owner management portal</td>
+        </tr>
+        <tr>
+          <td>MemberTabs</td>
+          <td>Home · Work · Inventory · History · Profile</td>
+          <td>Mechanic's daily work interface</td>
+        </tr>
+        <tr>
+          <td>CustomerTabs</td>
+          <td>Home · Services · Orders · Invoices · Profile</td>
+          <td>Customer self-service portal</td>
+        </tr>
+        <tr>
+          <td>GarageOnboarding</td>
+          <td>GarageDetails</td>
+          <td>First-time owner setup wizard</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Authentication Flow</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Enter Phone Number</h4>
+          <p>User types their 10-digit mobile number on the Login screen.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Receive OTP via SMS</h4>
+          <p>A 6-digit OTP is sent to the registered phone number. Valid for 5 minutes. Maximum 5 attempts allowed.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Verify OTP</h4>
+          <p>User enters the OTP. Server validates and returns an access token + refresh token.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Role-Based Redirect</h4>
+          <p>Based on the user's role (owner / member / customer), the app navigates to the correct portal automatically.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  5. OWNER PORTAL USER GUIDE                                 -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="doc-section page-break" id="owner-guide">
+    <h2><span class="section-num">5</span> Owner Portal — User Guide</h2>
+
+    <div class="info-box blue">
+      <p><strong>Who uses this:</strong> The garage owner or manager. Login with the owner's registered phone number.</p>
+    </div>
+
+    <!-- 5.1 First Time Setup -->
+    <h3>5.1 First-Time Setup (New Owner)</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Login with Phone Number + OTP</h4>
+          <p>Enter your registered mobile number. You will receive an SMS OTP. Enter it to proceed.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Complete Garage Profile</h4>
+          <p>First-time users are taken to the Garage Setup screen. Fill in: Garage Name, Owner Name, Address, City, State, Contact Number, Garage Type, and GST number (optional).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Upload Garage Logo</h4>
+          <p>Go to More → Garage Profile → Edit. Tap "Choose from Gallery" to upload your logo. It appears on all PDF invoices automatically.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Add Services Catalog</h4>
+          <p>Go to More → Service Parts. Add the services you offer (e.g., Oil Change, Wheel Alignment). You can also bulk-import via a CSV file.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>Add Team Members</h4>
+          <p>Go to More → Garage Users → Add User. Enter the mechanic's phone number and name. They can now log in with the Member role.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5.2 Daily Operations -->
+    <h3>5.2 Creating a Repair Order</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Go to Service Tab</h4>
+          <p>Tap the <strong>Service</strong> tab from the bottom navigation bar.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Tap "New Order"</h4>
+          <p>Press the + button or "New Order" from the Service Home screen.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Select or Add Customer</h4>
+          <p>Search for an existing customer by name or phone, or add a new customer. You can import contact details directly from your phone's contacts.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Select or Add Vehicle</h4>
+          <p>Choose the customer's vehicle from their saved vehicles, or add a new one (brand, model, registration number, variant).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>Add Services &amp; Parts</h4>
+          <p>Select services from your catalog. Add parts used (with quantity and price). Enter any customer notes or instructions.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <h4>Assign a Mechanic (Optional)</h4>
+          <p>Assign the order to one of your team members. They will receive it in their "My Work" tab.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">7</div>
+        <div class="step-content">
+          <h4>Submit the Order</h4>
+          <p>Tap "Create Order". The order is now live and appears in the Orders list.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5.3 Invoicing -->
+    <h3>5.3 Generating an Invoice</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Open a Completed / Ready Order</h4>
+          <p>Go to Service → Orders. Tap the order marked "Vehicle Ready" or "Completed".</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Review Line Items</h4>
+          <p>Verify all services and parts are listed correctly. Add labour charge %, tax %, or discount if applicable.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Generate Invoice</h4>
+          <p>Tap "Generate Invoice". The invoice is created with a unique invoice number, your garage logo, customer details, vehicle info, and all charges.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Download or Share</h4>
+          <p>Tap "Download PDF" to save, or "Share via SMS" to send a text summary directly to the customer's phone. The PDF includes your garage logo and all billing details.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5.4 Inventory -->
+    <h3>5.4 Inventory Management</h3>
+    <ul class="feature-list">
+      <li><strong>Parts Tab → Parts Home:</strong> View current stock levels for all parts</li>
+      <li><strong>Inventory Alerts:</strong> See parts that are low in stock or out of stock</li>
+      <li><strong>Purchase Orders:</strong> Create orders to vendors to restock parts</li>
+      <li><strong>Stock In:</strong> Record received stock against purchase orders</li>
+      <li><strong>Counter Sale:</strong> Sell parts directly over the counter (without repair order)</li>
+    </ul>
+
+    <!-- 5.5 Reports -->
+    <h3>5.5 Financial Reports</h3>
+    <table>
+      <thead>
+        <tr><th>Report</th><th>What It Shows</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Daily Report</td><td>All orders, revenue, and payments for a selected day</td></tr>
+        <tr><td>Monthly Report</td><td>Monthly summary of revenue, services, and orders</td></tr>
+        <tr><td>Income &amp; Expense</td><td>Breakdown of income vs operational expenses</td></tr>
+        <tr><td>Payment Report</td><td>Paid vs pending invoices, payment modes used</td></tr>
+        <tr><td>Tally Export</td><td>CSV export formatted for Tally accounting software</td></tr>
+      </tbody>
+    </table>
+
+    <!-- 5.6 More features -->
+    <h3>5.6 Other Owner Features</h3>
+    <div class="tech-grid">
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#dbeafe;">👥</div>
+        <div>
+          <h4>Customer Management</h4>
+          <p>View all customers, their vehicles, and full service history.</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#ede9fe;">🏷️</div>
+        <div>
+          <h4>Tags Management</h4>
+          <p>Create custom tags (e.g., "Insurance", "Fleet") to categorise orders.</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#dcfce7;">🔔</div>
+        <div>
+          <h4>Service Reminders</h4>
+          <p>Set reminders for customers' next service due dates.</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#fef3c7;">⭐</div>
+        <div>
+          <h4>Customer Feedback</h4>
+          <p>View feedback and ratings given by customers for completed services.</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#fee2e2;">📋</div>
+        <div>
+          <h4>Job Card Checklist</h4>
+          <p>Pre-defined checklist items for mechanics to verify before completing jobs.</p>
+        </div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon" style="background:#dbeafe;">🔍</div>
+        <div>
+          <h4>Vehicle Search</h4>
+          <p>Quickly search any vehicle by registration number across all customers.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  6. MEMBER PORTAL USER GUIDE                                -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="doc-section page-break" id="member-guide">
+    <h2><span class="section-num">6</span> Member (Mechanic) Portal — User Guide</h2>
+
+    <div class="info-box green">
+      <p><strong>Who uses this:</strong> Garage technicians and mechanics. Log in with the phone number added by the garage owner.</p>
+    </div>
+
+    <h3>6.1 Home Screen</h3>
+    <p>The Member Home shows a personal dashboard with:</p>
+    <ul class="feature-list">
+      <li><strong>Pending:</strong> Number of orders assigned but not yet started</li>
+      <li><strong>In Progress:</strong> Number of jobs currently being worked on</li>
+      <li><strong>Completed (Total):</strong> All-time completed jobs count</li>
+      <li><strong>Completed (Today):</strong> Jobs finished today</li>
+      <li><strong>Total Earnings:</strong> Total billing amount from completed work</li>
+    </ul>
+
+    <h3>6.2 My Work Tab</h3>
+    <p>The work screen has two tabs:</p>
+    <table>
+      <thead>
+        <tr><th>Tab</th><th>What It Shows</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>My Assigned</td><td>Orders specifically assigned to this mechanic</td></tr>
+        <tr><td>All Active</td><td>All unassigned and in-progress orders in the garage</td></tr>
+      </tbody>
+    </table>
+
+    <h3>6.3 Accepting / Rejecting an Order</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Find the Order</h4>
+          <p>Go to Work → My Assigned tab. Orders assigned to you appear here with a yellow accent bar.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Accept or Reject</h4>
+          <p>Tap <strong>Accept</strong> to take on the job, or <strong>Reject</strong> if you cannot take it. Rejected orders become available for other mechanics.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Start Work</h4>
+          <p>Tap <strong>Start Work</strong> to change the status to "In Progress". The owner can see this update in real-time.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Mark Vehicle Ready</h4>
+          <p>Once repair is complete, tap <strong>Mark Ready</strong>. The status changes to "Vehicle Ready" so the owner can notify the customer.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>Complete</h4>
+          <p>After the customer collects the vehicle, tap <strong>Complete</strong> to close the order.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>6.4 Recording Parts Used</h3>
+    <p>Inside an order detail screen, tap <strong>Edit Parts</strong> to add or update parts consumed in the repair. Enter part name, quantity, and price. This updates the billing automatically.</p>
+
+    <h3>6.5 Inventory Tab</h3>
+    <p>View the current stock of all parts available in the garage. Use this to check if a part is available before requesting it from the owner.</p>
+
+    <h3>6.6 History Tab</h3>
+    <p>View all previously completed orders. Useful for referencing past work, troubleshooting recurring issues, or tracking personal work history.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  7. CUSTOMER PORTAL USER GUIDE                              -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="doc-section page-break" id="customer-guide">
+    <h2><span class="section-num">7</span> Customer Portal — User Guide</h2>
+
+    <div class="info-box amber">
+      <p><strong>Who uses this:</strong> Vehicle owners who bring their cars/bikes to the garage. Log in with your registered phone number.</p>
+    </div>
+
+    <h3>7.1 Home Screen</h3>
+    <p>The Customer Home displays a personalised dashboard showing:</p>
+    <ul class="feature-list">
+      <li>Total number of orders placed</li>
+      <li>Active orders (in-progress or waiting)</li>
+      <li>Completed orders count</li>
+      <li>Total amount spent across all services</li>
+      <li>Garage information (name, address, contact number)</li>
+      <li>Your 4 recent orders with status colour indicators</li>
+    </ul>
+
+    <h3>7.2 Services Tab — Browse Services</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Browse Available Services</h4>
+          <p>Tap the Services tab to see all services offered by the garage with their prices.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Book a Service</h4>
+          <p>Select the service you need. Choose your vehicle (or add a new one). Submit a repair request with any notes for the mechanic.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>7.3 Orders Tab — Track Your Repairs</h3>
+    <p>The Orders screen shows all your repair orders. Use the filter chips at the top to filter by status:</p>
+    <table>
+      <thead>
+        <tr><th>Status</th><th>Colour</th><th>Meaning</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Requested</td><td><span class="badge badge-amber">Amber</span></td><td>Order received, waiting for mechanic assignment</td></tr>
+        <tr><td>In Progress</td><td><span class="badge badge-purple">Purple</span></td><td>Mechanic is actively working on your vehicle</td></tr>
+        <tr><td>Vehicle Ready</td><td><span class="badge" style="background:#e0f2fe;color:#0369a1;">Sky Blue</span></td><td>Repair done, you can collect your vehicle</td></tr>
+        <tr><td>Completed</td><td><span class="badge badge-green">Green</span></td><td>Vehicle collected and payment done</td></tr>
+        <tr><td>Cancelled</td><td><span class="badge badge-red">Red</span></td><td>Order was cancelled</td></tr>
+      </tbody>
+    </table>
+
+    <h3>7.4 Invoices Tab — View &amp; Download Bills</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Open Invoices Tab</h4>
+          <p>Tap the <strong>Invoices</strong> tab in the bottom navigation. All your invoices are listed here with payment status.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Tap an Invoice</h4>
+          <p>Open any invoice to see the full breakdown: services performed, parts used, labour charges, tax, discounts, and the total amount.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Download PDF</h4>
+          <p>Tap <strong>Download PDF</strong> at the bottom of the invoice screen. A professionally formatted PDF is generated with the garage logo, all line items, and totals. Share or save it to your device.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Share via SMS</h4>
+          <p>Tap <strong>Share SMS</strong> to open your SMS app with a pre-filled text summary of the invoice ready to forward to anyone.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>7.5 Profile Tab</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Edit Your Profile</h4>
+          <p>Tap the edit icon (pen) in the top-right of the profile hero. Edit your full name, address, and state. Tap <strong>Save Changes</strong>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Add a Vehicle</h4>
+          <p>Scroll to "My Vehicles" section. Tap <strong>+ Add</strong>. Enter the vehicle brand, model, registration number, and variant. Tap "Add Vehicle".</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Logout</h4>
+          <p>Scroll to the bottom of the Profile screen. Tap <strong>Logout</strong> to securely end your session.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  8. API REFERENCE                                           -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="doc-section page-break" id="api">
+    <h2><span class="section-num">8</span> API Reference</h2>
+
+    <p>Base URL: <code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;font-size:0.85rem;">/api/v1</code></p>
+    <p>All protected endpoints require a Bearer token in the <code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;font-size:0.85rem;">Authorization</code> header.</p>
+
+    <!-- Auth -->
+    <div class="endpoint-group avoid-break">
+      <div class="endpoint-group-title">🔐 Authentication — /api/v1/auth</div>
+      <div class="endpoints">
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <div><code>/request-otp</code><div class="endpoint-desc">Request OTP to login — body: { phoneNo }</div></div>
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <div><code>/resend-otp</code><div class="endpoint-desc">Resend OTP to phone number</div></div>
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <div><code>/verify-otp</code><div class="endpoint-desc">Verify OTP → returns accessToken + refreshToken</div></div>
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <div><code>/refresh</code><div class="endpoint-desc">Refresh expired access token using refresh token</div></div>
+        </div>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <div><code>/garage</code><div class="endpoint-desc">Get garage profile for authenticated owner [Protected]</div></div>
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <div><code>/update-garage-profile</code><div class="endpoint-desc">Save/update garage onboarding details [Protected]</div></div>
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <div><code>/logout</code><div class="endpoint-desc">Invalidate refresh token [Protected]</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Customer -->
+    <div class="endpoint-group avoid-break">
+      <div class="endpoint-group-title">🧑‍💼 Customer Portal — /api/v1/customer</div>
+      <div class="endpoints">
+        <div class="endpoint"><span class="method get">GET</span><div><code>/garage-info</code><div class="endpoint-desc">Get public garage info visible to customer</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/services</code><div class="endpoint-desc">List available services offered by the garage</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/vehicles</code><div class="endpoint-desc">Get customer's registered vehicles</div></div></div>
+        <div class="endpoint"><span class="method post">POST</span><div><code>/vehicles</code><div class="endpoint-desc">Add a new vehicle for the customer</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/orders</code><div class="endpoint-desc">List customer's repair orders (filterable by status)</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/orders/:id</code><div class="endpoint-desc">Get detailed view of a single repair order</div></div></div>
+        <div class="endpoint"><span class="method post">POST</span><div><code>/orders</code><div class="endpoint-desc">Create a new repair/service request</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/invoices</code><div class="endpoint-desc">List all customer invoices</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/invoices/:id</code><div class="endpoint-desc">Get invoice detail including garage info for PDF</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/profile</code><div class="endpoint-desc">Get customer profile details</div></div></div>
+        <div class="endpoint"><span class="method put">PUT</span><div><code>/profile</code><div class="endpoint-desc">Update customer name, address, state</div></div></div>
+      </div>
+    </div>
+
+    <!-- Member -->
+    <div class="endpoint-group avoid-break">
+      <div class="endpoint-group-title">🔧 Member Portal — /api/v1/member</div>
+      <div class="endpoints">
+        <div class="endpoint"><span class="method get">GET</span><div><code>/dashboard</code><div class="endpoint-desc">Member dashboard — order counts and earnings summary</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/orders</code><div class="endpoint-desc">Orders — ?assignedToMe=true or ?status=created,in_progress</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/orders/:id</code><div class="endpoint-desc">Full order detail with services and parts</div></div></div>
+        <div class="endpoint"><span class="method put">PUT</span><div><code>/orders/:id/accept</code><div class="endpoint-desc">Accept an assigned order</div></div></div>
+        <div class="endpoint"><span class="method put">PUT</span><div><code>/orders/:id/reject</code><div class="endpoint-desc">Reject an assigned order (becomes available again)</div></div></div>
+        <div class="endpoint"><span class="method put">PUT</span><div><code>/orders/:id/status</code><div class="endpoint-desc">Update status: in_progress → vehicle_ready → completed</div></div></div>
+        <div class="endpoint"><span class="method put">PUT</span><div><code>/orders/:id/parts</code><div class="endpoint-desc">Add/update parts used in the repair</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/inventory</code><div class="endpoint-desc">View available spare parts inventory</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/profile</code><div class="endpoint-desc">Get member profile</div></div></div>
+        <div class="endpoint"><span class="method put">PUT</span><div><code>/profile</code><div class="endpoint-desc">Update member name, address, state</div></div></div>
+      </div>
+    </div>
+
+    <!-- Repair Orders -->
+    <div class="endpoint-group avoid-break">
+      <div class="endpoint-group-title">📋 Repair Orders (Owner) — /api/v1/repair-orders</div>
+      <div class="endpoints">
+        <div class="endpoint"><span class="method get">GET</span><div><code>/</code><div class="endpoint-desc">List all repair orders with filters (status, date, customer)</div></div></div>
+        <div class="endpoint"><span class="method post">POST</span><div><code>/</code><div class="endpoint-desc">Create a new repair order</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/:id</code><div class="endpoint-desc">Get full order detail</div></div></div>
+        <div class="endpoint"><span class="method put">PUT</span><div><code>/:id</code><div class="endpoint-desc">Update order (assign mechanic, edit services, update status)</div></div></div>
+        <div class="endpoint"><span class="method delete">DEL</span><div><code>/:id</code><div class="endpoint-desc">Soft-delete a repair order</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/search-customers</code><div class="endpoint-desc">Search customers by name for order creation</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/search-vehicle</code><div class="endpoint-desc">Find vehicle by registration number</div></div></div>
+        <div class="endpoint"><span class="method get">GET</span><div><code>/tally-export</code><div class="endpoint-desc">Download orders as CSV for Tally accounting</div></div></div>
+      </div>
+    </div>
+
+    <!-- Additional APIs summary -->
+    <h3>Additional API Groups</h3>
+    <table>
+      <thead>
+        <tr><th>Route Prefix</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>/api/v1/invoices</td><td>Invoice CRUD, mark as paid, generate PDF data</td></tr>
+        <tr><td>/api/v1/garage-services</td><td>Service catalog management (add, edit, delete, CSV import)</td></tr>
+        <tr><td>/api/v1/purchase-orders</td><td>Vendor purchase order management</td></tr>
+        <tr><td>/api/v1/stock-in</td><td>Record stock received from vendors</td></tr>
+        <tr><td>/api/v1/expenses</td><td>Track garage operational expenses</td></tr>
+        <tr><td>/api/v1/vehicle</td><td>Vehicle CRUD across all customers</td></tr>
+        <tr><td>/api/v1/catalog</td><td>Parts catalog / service parts library</td></tr>
+        <tr><td>/api/v1/users-list</td><td>List and manage garage users (owner + members)</td></tr>
+        <tr><td>/api/v1/tags</td><td>Create and manage custom order tags</td></tr>
+        <tr><td>/api/v1/service-reminders</td><td>Set and retrieve service due reminders</td></tr>
+        <tr><td>/api/v1/feedbacks</td><td>View customer feedback on completed services</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  9. DATABASE MODELS                                         -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="doc-section page-break" id="database">
+    <h2><span class="section-num">9</span> Database Models</h2>
+
+    <p>ApnoGarage uses <strong>MongoDB</strong> (NoSQL document database) via the <strong>Mongoose ODM</strong>. All data is stored as JSON documents in collections.</p>
+
+    <table>
+      <thead>
+        <tr><th>Model / Collection</th><th>Purpose</th><th>Key Fields</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>User</td>
+          <td>All app users (owner, customer, member, vendor)</td>
+          <td>phoneNo, role, fullName, emailId, garageId, otpCode, otpExpiry, refreshToken</td>
+        </tr>
+        <tr>
+          <td>Garage</td>
+          <td>Garage profile and settings</td>
+          <td>garageName, garageOwnerName, garageAddress, garageLogo, garageType, gstNumber, isGstApplicable, isProfileComplete</td>
+        </tr>
+        <tr>
+          <td>RepairOrder</td>
+          <td>Core repair orders — heart of the system</td>
+          <td>orderNo, customerId, vehicleId, garageId, assignedTo, status, services[], parts[], labourCharge, taxAmount, discountAmount, totalAmount, customerNote, isDeleted</td>
+        </tr>
+        <tr>
+          <td>Invoice</td>
+          <td>Customer invoices linked to orders</td>
+          <td>invoiceNo, repairOrderId, customerId, vehicleId, services[], parts[], totalAmount, paymentStatus, paymentMode, labourCharge, taxAmount, discountAmount, notes</td>
+        </tr>
+        <tr>
+          <td>Vehicle</td>
+          <td>Customer vehicles</td>
+          <td>customerId, garageId, vehicleBrand, vehicleModel, vehicleRegisterNo, vehicleVariant</td>
+        </tr>
+        <tr>
+          <td>GarageServiceCatalog</td>
+          <td>Services offered by the garage</td>
+          <td>garageId, name, description, price, category, isActive</td>
+        </tr>
+        <tr>
+          <td>Inventory</td>
+          <td>Spare parts stock levels</td>
+          <td>garageId, partName, partNo, quantity, unit, minStockLevel, costPrice, sellingPrice</td>
+        </tr>
+        <tr>
+          <td>PurchaseOrder</td>
+          <td>Purchase orders to vendors</td>
+          <td>garageId, vendorId, parts[], totalAmount, status, expectedDate</td>
+        </tr>
+        <tr>
+          <td>StockIn</td>
+          <td>Stock received from vendors</td>
+          <td>garageId, purchaseOrderId, parts[], receivedDate</td>
+        </tr>
+        <tr>
+          <td>Expense</td>
+          <td>Garage operational expenses</td>
+          <td>garageId, category, amount, description, date, paymentMode</td>
+        </tr>
+        <tr>
+          <td>Feedback</td>
+          <td>Customer feedback on services</td>
+          <td>garageId, customerId, repairOrderId, rating, comment, createdAt</td>
+        </tr>
+        <tr>
+          <td>ServiceReminder</td>
+          <td>Upcoming service reminders for vehicles</td>
+          <td>garageId, customerId, vehicleId, reminderDate, serviceType, notes, status</td>
+        </tr>
+        <tr>
+          <td>Tag</td>
+          <td>Custom labels for orders</td>
+          <td>garageId, name, color</td>
+        </tr>
+        <tr>
+          <td>VehicleMeta</td>
+          <td>Vehicle brand/model metadata lookup</td>
+          <td>brand, models[], year</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>RepairOrder Status Lifecycle</h3>
+    <table>
+      <thead>
+        <tr><th>Status Value</th><th>Display Label</th><th>Who Sets It</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>created</code></td><td>Requested / Pending</td><td>Owner or Customer (on order creation)</td></tr>
+        <tr><td><code>in_progress</code></td><td>In Progress</td><td>Member (Accept → Start Work)</td></tr>
+        <tr><td><code>vehicle_ready</code></td><td>Vehicle Ready</td><td>Member (Mark Ready)</td></tr>
+        <tr><td><code>completed</code></td><td>Completed</td><td>Member or Owner (Complete)</td></tr>
+        <tr><td><code>cancelled</code></td><td>Cancelled</td><td>Owner (Cancel Order)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  10. SCREEN REFERENCE                                       -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="doc-section page-break" id="screens">
+    <h2><span class="section-num">10</span> Screen Reference</h2>
+
+    <h3>Owner Portal Screens (40+ screens)</h3>
+    <table>
+      <thead>
+        <tr><th>Screen</th><th>Tab</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ServiceHome</td><td>Service</td><td>Overview of today's orders and quick actions</td></tr>
+        <tr><td>CounterSale</td><td>Service</td><td>Quick invoicing for walk-in counter sales</td></tr>
+        <tr><td>Orders</td><td>Service</td><td>Full list of all repair orders with filters</td></tr>
+        <tr><td>InvoiceDetail</td><td>Service</td><td>Full invoice view with PDF download and SMS share</td></tr>
+        <tr><td>InvoiceList</td><td>Service</td><td>List of all invoices</td></tr>
+        <tr><td>PartsHome</td><td>Parts</td><td>Inventory dashboard and stock summary</td></tr>
+        <tr><td>InventoryAlerts</td><td>Parts</td><td>Parts below minimum stock level</td></tr>
+        <tr><td>PurchaseOrder</td><td>Parts</td><td>Create and manage vendor purchase orders</td></tr>
+        <tr><td>StockIn</td><td>Parts</td><td>Record received stock from vendors</td></tr>
+        <tr><td>AccountsScreen</td><td>Accounts</td><td>Financial summary and reports entry point</td></tr>
+        <tr><td>MyCustomers</td><td>More</td><td>All customers with search and filter</td></tr>
+        <tr><td>AddCustomer</td><td>More</td><td>Add new customer (manual or from contacts)</td></tr>
+        <tr><td>CustomerProfile</td><td>More</td><td>Customer detail with vehicle list and order history</td></tr>
+        <tr><td>MyVendors</td><td>More</td><td>Vendor list and management</td></tr>
+        <tr><td>MyGarageProfile</td><td>More</td><td>View garage profile details</td></tr>
+        <tr><td>EditGarage</td><td>More</td><td>Edit garage info and upload logo</td></tr>
+        <tr><td>GarageUsers</td><td>More</td><td>Team members list</td></tr>
+        <tr><td>AddGarageUser</td><td>More</td><td>Add new mechanic or staff</td></tr>
+        <tr><td>ServiceParts</td><td>More</td><td>Service catalog management</td></tr>
+        <tr><td>GaragePackages</td><td>More</td><td>Service package bundles</td></tr>
+        <tr><td>TagsManagement</td><td>More</td><td>Create and manage order tags</td></tr>
+        <tr><td>ServiceReminders</td><td>More</td><td>Schedule vehicle service reminders</td></tr>
+        <tr><td>ServiceFeedbacks</td><td>More</td><td>View customer ratings and feedback</td></tr>
+        <tr><td>OrderSearch</td><td>More</td><td>Search orders by customer, vehicle, or date</td></tr>
+        <tr><td>CancelledOrders</td><td>More</td><td>View all cancelled orders</td></tr>
+        <tr><td>VehicleSearch</td><td>More</td><td>Find vehicle by registration number</td></tr>
+        <tr><td>TallyExport</td><td>More</td><td>Export financial data for Tally software</td></tr>
+        <tr><td>DailyReport</td><td>More</td><td>Day-wise revenue and order summary</td></tr>
+        <tr><td>MonthlyReport</td><td>More</td><td>Month-wise aggregated revenue report</td></tr>
+        <tr><td>IncomeExpenseReport</td><td>More</td><td>Income vs expense comparison</td></tr>
+        <tr><td>PaymentReport</td><td>More</td><td>Payment mode and collection analysis</td></tr>
+        <tr><td>InsuranceDue</td><td>More</td><td>Vehicles with upcoming insurance renewals</td></tr>
+        <tr><td>JobCardChecklist</td><td>More</td><td>Pre/post inspection checklist items</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Member Portal Screens</h3>
+    <div class="screen-grid">
+      <div class="screen-item">
+        <span class="screen-icon">🏠</span>
+        <div class="screen-name">MemberHome</div>
+        <div class="screen-desc">Dashboard with stats and earnings</div>
+      </div>
+      <div class="screen-item">
+        <span class="screen-icon">🔧</span>
+        <div class="screen-name">MemberWork</div>
+        <div class="screen-desc">Assigned &amp; active orders list</div>
+      </div>
+      <div class="screen-item">
+        <span class="screen-icon">📋</span>
+        <div class="screen-name">MemberOrderDetail</div>
+        <div class="screen-desc">Full order with status controls</div>
+      </div>
+      <div class="screen-item">
+        <span class="screen-icon">📦</span>
+        <div class="screen-name">MemberInventory</div>
+        <div class="screen-desc">View available parts stock</div>
+      </div>
+      <div class="screen-item">
+        <span class="screen-icon">✅</span>
+        <div class="screen-name">MemberHistory</div>
+        <div class="screen-desc">Past completed work</div>
+      </div>
+      <div class="screen-item">
+        <span class="screen-icon">👤</span>
+        <div class="screen-name">MemberProfile</div>
+        <div class="screen-desc">Personal info management</div>
+      </div>
+    </div>
+
+    <h3>Customer Portal Screens</h3>
+    <div class="screen-grid">
+      <div class="screen-item">
+        <span class="screen-icon">🏠</span>
+        <div class="screen-name">CustomerHome</div>
+        <div class="screen-desc">Dashboard, stats, recent orders</div>
+      </div>
+      <div class="screen-item">
+        <span class="screen-icon">🛠️</span>
+        <div class="screen-name">CustomerServices</div>
+        <div class="screen-desc">Browse &amp; book services</div>
+      </div>
+      <div class="screen-item">
+        <span class="screen-icon">🚗</span>
+        <div class="screen-name">CustomerOrders</div>
+        <div class="screen-desc">Order list with status filters</div>
+      </div>
+      <div class="screen-item">
+        <span class="screen-icon">📄</span>
+        <div class="screen-name">CustomerOrderDetail</div>
+        <div class="screen-desc">Full order status view</div>
+      </div>
+      <div class="screen-item">
+        <span class="screen-icon">🧾</span>
+        <div class="screen-name">CustomerInvoices</div>
+        <div class="screen-desc">Invoice list with payment status</div>
+      </div>
+      <div class="screen-item">
+        <span class="screen-icon">📑</span>
+        <div class="screen-name">CustomerInvoiceDetail</div>
+        <div class="screen-desc">PDF invoice with download/share</div>
+      </div>
+      <div class="screen-item">
+        <span class="screen-icon">👤</span>
+        <div class="screen-name">CustomerProfile</div>
+        <div class="screen-desc">Profile &amp; vehicle management</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  11. SECURITY                                               -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="doc-section page-break" id="security">
+    <h2><span class="section-num">11</span> Security</h2>
+
+    <div class="tech-grid">
+      <div class="tech-item avoid-break">
+        <div class="tech-icon" style="background:#dcfce7;">🔑</div>
+        <div>
+          <h4>OTP Authentication</h4>
+          <p>Phone-based OTP. No passwords stored. OTP valid for 5 minutes, max 5 attempts before lockout.</p>
+        </div>
+      </div>
+      <div class="tech-item avoid-break">
+        <div class="tech-icon" style="background:#dbeafe;">🎫</div>
+        <div>
+          <h4>JWT Tokens</h4>
+          <p>Short-lived access token + long-lived refresh token. Auto-refreshed on expiry. Revoked on logout.</p>
+        </div>
+      </div>
+      <div class="tech-item avoid-break">
+        <div class="tech-icon" style="background:#ede9fe;">🛡️</div>
+        <div>
+          <h4>Role-Based Access Control</h4>
+          <p>Every protected route checks user role. Owners cannot access member endpoints and vice versa.</p>
+        </div>
+      </div>
+      <div class="tech-item avoid-break">
+        <div class="tech-icon" style="background:#fef3c7;">⚙️</div>
+        <div>
+          <h4>Helmet Security Headers</h4>
+          <p>HTTP security headers set automatically: XSS protection, content-type sniffing, frame options.</p>
+        </div>
+      </div>
+      <div class="tech-item avoid-break">
+        <div class="tech-icon" style="background:#fee2e2;">🚦</div>
+        <div>
+          <h4>Rate Limiting</h4>
+          <p>Maximum 500 requests per 15 minutes per IP address to prevent abuse.</p>
+        </div>
+      </div>
+      <div class="tech-item avoid-break">
+        <div class="tech-icon" style="background:#dcfce7;">✅</div>
+        <div>
+          <h4>Input Validation (Zod)</h4>
+          <p>All API inputs validated before reaching controllers. Malformed data is rejected with specific error messages.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  12. SETUP & DEPLOYMENT                                     -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="doc-section page-break" id="setup">
+    <h2><span class="section-num">12</span> Setup &amp; Deployment</h2>
+
+    <h3>12.1 Backend Setup</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Prerequisites</h4>
+          <p>Node.js 18+, MongoDB 6+ (local or MongoDB Atlas), npm</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Install Dependencies</h4>
+          <p><code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">cd garage-system-backend &amp;&amp; npm install</code></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Configure Environment Variables</h4>
+          <p>Create a <code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">.env</code> file with:<br>
+          <code style="background:#f3f4f6;padding:4px 10px;border-radius:4px;display:block;margin-top:6px;font-size:0.8rem;line-height:2;">
+            MONGO_URI=mongodb://localhost:27017/apnogarage<br>
+            JWT_SECRET=your-secret-key<br>
+            JWT_REFRESH_SECRET=your-refresh-secret<br>
+            PORT=5000<br>
+            OTP_SERVICE_KEY=your-sms-api-key
+          </code></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Start Server</h4>
+          <p><code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">npm run dev</code> (development) or <code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">npm start</code> (production)</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>12.2 Mobile App Setup</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Prerequisites</h4>
+          <p>Node.js 18+, Expo CLI (<code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">npm install -g expo-cli</code>), iOS Simulator or Android Emulator or Expo Go app on a physical device</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Install Dependencies</h4>
+          <p><code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">cd garage-system-app_23_3 &amp;&amp; npm install</code></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Set Backend URL</h4>
+          <p>Update the API base URL in <code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">src/api/axiosClient.js</code> to point to your deployed or local backend server.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Start the App</h4>
+          <p><code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">npx expo start</code> → Scan the QR code with Expo Go on your device, or press <strong>i</strong> for iOS / <strong>a</strong> for Android emulator.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>Build for Production</h4>
+          <p>Use EAS Build: <code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">eas build --platform android</code> or <code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">eas build --platform ios</code></p>
+        </div>
+      </div>
+    </div>
+
+    <h3>12.3 Required Permissions (Mobile App)</h3>
+    <table>
+      <thead>
+        <tr><th>Permission</th><th>Platform</th><th>Used For</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>READ_CONTACTS</td><td>Android</td><td>Import customer phone number from device contacts</td></tr>
+        <tr><td>NSContactsUsageDescription</td><td>iOS</td><td>Import customer phone number from device contacts</td></tr>
+        <tr><td>Media Library</td><td>Both</td><td>Upload garage logo from photo gallery</td></tr>
+        <tr><td>Camera (optional)</td><td>Both</td><td>Capture vehicle or document photos</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  FOOTER                                                     -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="doc-footer">
+    <p>
+      <strong>ApnoGarage</strong> — Complete Garage Management System
+    </p>
+    <p style="margin-top:6px; font-size:0.78rem;">
+      This document covers version 1.0 of the platform. All rights reserved.
+    </p>
+    <p style="margin-top:6px; font-size:0.78rem; color:#9ca3af;">
+      To save as PDF: Click the <strong>"Save as PDF / Print"</strong> button at the top ↑ and select "Save as PDF" as the destination.
+    </p>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+  // Auto-hide print bar when printing
+  window.onbeforeprint = () => {
+    document.querySelector('.print-bar').style.display = 'none';
+    document.querySelector('div[style*="padding-top: 48px"]').style.display = 'none';
+  };
+  window.onafterprint = () => {
+    document.querySelector('.print-bar').style.display = '';
+    document.querySelector('div[style*="padding-top: 48px"]').style.display = '';
+  };
+</script>
+</body>
+</html>
