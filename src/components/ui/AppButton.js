@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS, FONTS, SIZES, SHADOWS } from "../../utils/constants";
+import { useFontSizes } from "../../context/PreferencesContext";
 
 // ─── Variant styles ───────────────────────────────────────────────────────────
 const VARIANT_STYLES = {
@@ -82,8 +83,10 @@ export default function AppButton({
     }).start();
   };
 
+  const fs = useFontSizes();
   const vs = VARIANT_STYLES[variant] || VARIANT_STYLES.primary;
-  const ss = SIZE_MAP[size] || SIZE_MAP.md;
+  const ss = { ...(SIZE_MAP[size] || SIZE_MAP.md) };
+  ss.fontSize = size === "sm" ? fs.textSm : size === "lg" ? fs.textMd : fs.textBase;
   const isDisabled = disabled || loading;
 
   const buttonStyle = [

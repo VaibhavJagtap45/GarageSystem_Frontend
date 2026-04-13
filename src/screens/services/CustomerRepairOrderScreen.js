@@ -1184,6 +1184,7 @@ import AppInput from "../../components/ui/AppInput";
 import AppButton from "../../components/ui/AppButton";
 import AppToggle from "../../components/ui/AppToggle";
 import axiosClient from "../../api/axios";
+import { linkRepairOrder } from "../../api/booking";
 import {
   REPAIR_ORDER_ENDPOINTS,
   CATALOG_ENDPOINTS,
@@ -1201,7 +1202,7 @@ const calcLineTotal = (price, qty, disc, tax) => {
 
 // ─── Search Phase ─────────────────────────────────────────────────────────────
 function SearchPhase({ onFound, onNavigate, onNewCustomer }) {
-  const [query, setQuery]     = useState("");
+  const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -1283,8 +1284,18 @@ function SearchPhase({ onFound, onNavigate, onNewCustomer }) {
           {loading ? (
             <ActivityIndicator size="small" color={COLORS.primary} />
           ) : query.length > 0 ? (
-            <TouchableOpacity onPress={() => { setQuery(""); setResults([]); setSearched(false); }}>
-              <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+            <TouchableOpacity
+              onPress={() => {
+                setQuery("");
+                setResults([]);
+                setSearched(false);
+              }}
+            >
+              <Ionicons
+                name="close-circle"
+                size={18}
+                color={COLORS.textMuted}
+              />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -1321,7 +1332,11 @@ function SearchPhase({ onFound, onNavigate, onNewCustomer }) {
                   </Text>
                   {item.vehicle ? (
                     <View style={styles.resultVehicleRow}>
-                      <Ionicons name="car-outline" size={12} color={COLORS.primary} />
+                      <Ionicons
+                        name="car-outline"
+                        size={12}
+                        color={COLORS.primary}
+                      />
                       <Text style={styles.resultVehicle}>
                         {item.vehicle.vehicleBrand} {item.vehicle.vehicleModel}
                         {item.vehicle.vehicleRegisterNo
@@ -1330,11 +1345,17 @@ function SearchPhase({ onFound, onNavigate, onNewCustomer }) {
                       </Text>
                     </View>
                   ) : (
-                    <Text style={styles.resultNoVehicle}>No vehicle — tap to add</Text>
+                    <Text style={styles.resultNoVehicle}>
+                      No vehicle — tap to add
+                    </Text>
                   )}
                 </View>
 
-                <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={COLORS.textMuted}
+                />
               </TouchableOpacity>
             )}
           />
@@ -1344,11 +1365,16 @@ function SearchPhase({ onFound, onNavigate, onNewCustomer }) {
       {/* ── No results ── */}
       {searched && results.length === 0 && query.trim().length >= 2 && (
         <View style={styles.notFoundCard}>
-          <Ionicons name="alert-circle-outline" size={22} color={COLORS.warning} />
+          <Ionicons
+            name="alert-circle-outline"
+            size={22}
+            color={COLORS.warning}
+          />
           <View style={{ flex: 1 }}>
             <Text style={styles.notFoundTitle}>No results found</Text>
             <Text style={styles.notFoundSub}>
-              No customer or vehicle matched "{query}".{"\n"}Is this a new customer?
+              No customer or vehicle matched "{query}".{"\n"}Is this a new
+              customer?
             </Text>
           </View>
         </View>
@@ -1628,7 +1654,7 @@ function CatalogPickerModal({ visible, itemType, onClose, onSelect }) {
 
 // ─── Tag Picker Modal ─────────────────────────────────────────────────────────
 function TagPickerModal({ visible, onClose, selectedTags, onConfirm }) {
-  const [tags, setTags]       = useState([]);
+  const [tags, setTags] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState([]);
 
@@ -1636,10 +1662,15 @@ function TagPickerModal({ visible, onClose, selectedTags, onConfirm }) {
     if (visible) {
       setSelected(selectedTags ?? []);
       setLoading(true);
-      axiosClient.get(TAG_ENDPOINTS.LIST)
+      axiosClient
+        .get(TAG_ENDPOINTS.LIST)
         .then((res) => {
           const all = res.data?.data?.tags ?? res.data?.data ?? [];
-          setTags(all.filter((t) => t.tagType === "repair_order" || t.tagType === "both"));
+          setTags(
+            all.filter(
+              (t) => t.tagType === "repair_order" || t.tagType === "both",
+            ),
+          );
         })
         .catch(() => setTags([]))
         .finally(() => setLoading(false));
@@ -1647,13 +1678,21 @@ function TagPickerModal({ visible, onClose, selectedTags, onConfirm }) {
   }, [visible]);
 
   const toggle = (name) =>
-    setSelected((prev) => prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]);
+    setSelected((prev) =>
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name],
+    );
 
   const LIGHT_HEX = new Set(["#FFEB3B", "#CDDC39"]);
-  const displayHex = (hex) => (LIGHT_HEX.has(hex) ? "#B8860B" : hex || COLORS.primary);
+  const displayHex = (hex) =>
+    LIGHT_HEX.has(hex) ? "#B8860B" : hex || COLORS.primary;
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
       <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
         <View style={styles.pickerHeader}>
           <Text style={styles.pickerTitle}>Select Tags</Text>
@@ -1666,26 +1705,57 @@ function TagPickerModal({ visible, onClose, selectedTags, onConfirm }) {
           <ActivityIndicator color={COLORS.primary} style={{ marginTop: 40 }} />
         ) : tags.length === 0 ? (
           <View style={{ alignItems: "center", paddingTop: 60, gap: 8 }}>
-            <Ionicons name="pricetag-outline" size={40} color={COLORS.borderLight} />
-            <Text style={{ fontFamily: FONTS.regular, fontSize: SIZES.textBase, color: COLORS.textMuted, textAlign: "center", paddingHorizontal: 24 }}>
+            <Ionicons
+              name="pricetag-outline"
+              size={40}
+              color={COLORS.borderLight}
+            />
+            <Text
+              style={{
+                fontFamily: FONTS.regular,
+                fontSize: SIZES.textBase,
+                color: COLORS.textMuted,
+                textAlign: "center",
+                paddingHorizontal: 24,
+              }}
+            >
               No tags found. Create tags in Settings → Tags.
             </Text>
           </View>
         ) : (
-          <ScrollView contentContainerStyle={{ padding: SIZES.screenPadding, flexDirection: "row", flexWrap: "wrap", gap: SIZES.sm }}>
+          <ScrollView
+            contentContainerStyle={{
+              padding: SIZES.screenPadding,
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: SIZES.sm,
+            }}
+          >
             {tags.map((tag) => {
               const hex = displayHex(tag.color);
               const isSelected = selected.includes(tag.name);
               return (
                 <TouchableOpacity
                   key={tag._id}
-                  style={[styles.tagPickerChip, { borderColor: hex, backgroundColor: isSelected ? hex + "22" : COLORS.bgCard }]}
+                  style={[
+                    styles.tagPickerChip,
+                    {
+                      borderColor: hex,
+                      backgroundColor: isSelected ? hex + "22" : COLORS.bgCard,
+                    },
+                  ]}
                   onPress={() => toggle(tag.name)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.tagPickerDot, { backgroundColor: hex }]} />
-                  <Text style={[styles.tagPickerLabel, { color: hex }]}>{tag.name}</Text>
-                  {isSelected && <Ionicons name="checkmark" size={13} color={hex} />}
+                  <View
+                    style={[styles.tagPickerDot, { backgroundColor: hex }]}
+                  />
+                  <Text style={[styles.tagPickerLabel, { color: hex }]}>
+                    {tag.name}
+                  </Text>
+                  {isSelected && (
+                    <Ionicons name="checkmark" size={13} color={hex} />
+                  )}
                 </TouchableOpacity>
               );
             })}
@@ -1693,11 +1763,25 @@ function TagPickerModal({ visible, onClose, selectedTags, onConfirm }) {
         )}
         <View style={{ padding: SIZES.screenPadding, paddingTop: SIZES.sm }}>
           <TouchableOpacity
-            style={{ backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMd, paddingVertical: 13, alignItems: "center" }}
-            onPress={() => { onConfirm(selected); onClose(); }}
+            style={{
+              backgroundColor: COLORS.primary,
+              borderRadius: SIZES.radiusMd,
+              paddingVertical: 13,
+              alignItems: "center",
+            }}
+            onPress={() => {
+              onConfirm(selected);
+              onClose();
+            }}
             activeOpacity={0.85}
           >
-            <Text style={{ fontFamily: FONTS.semibold, fontSize: SIZES.textBase, color: COLORS.white }}>
+            <Text
+              style={{
+                fontFamily: FONTS.semibold,
+                fontSize: SIZES.textBase,
+                color: COLORS.white,
+              }}
+            >
               Done ({selected.length} selected)
             </Text>
           </TouchableOpacity>
@@ -1726,15 +1810,307 @@ function TotalRow({ label, value, highlight }) {
   );
 }
 
+// ─── Delivery Date/Time Picker Modal ─────────────────────────────────────────
+const DT_DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DT_MONTH_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+const DT_DAYS = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date();
+  d.setDate(d.getDate() + i);
+  return d;
+});
+const DT_TIME_SLOTS = (() => {
+  const slots = [];
+  for (let min = 8 * 60; min <= 21 * 60; min += 30) {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    const ampm = h < 12 ? "AM" : "PM";
+    const dh = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    slots.push({
+      label: `${dh}:${String(m).padStart(2, "0")} ${ampm}`,
+      hours: h,
+      minutes: m,
+    });
+  }
+  return slots;
+})();
+
+function DeliveryDatePickerModal({ visible, current, onClose, onConfirm }) {
+  // Derive initial selection from the `current` ISO string
+  const init = () => {
+    const d = current
+      ? new Date(current)
+      : new Date(Date.now() + 6 * 60 * 60 * 1000);
+    const dayIdx = DT_DAYS.findIndex(
+      (day) =>
+        day.getDate() === d.getDate() &&
+        day.getMonth() === d.getMonth() &&
+        day.getFullYear() === d.getFullYear(),
+    );
+    const timeIdx = DT_TIME_SLOTS.findIndex(
+      (s) => s.hours === d.getHours() && s.minutes === d.getMinutes(),
+    );
+    return {
+      dayIdx: dayIdx >= 0 ? dayIdx : 0,
+      timeIdx: timeIdx >= 0 ? timeIdx : 0,
+    };
+  };
+
+  const [dayIdx, setDayIdx] = useState(() => init().dayIdx);
+  const [timeIdx, setTimeIdx] = useState(() => init().timeIdx);
+
+  // Re-sync when modal opens with a new `current`
+  useEffect(() => {
+    if (visible) {
+      const { dayIdx: d, timeIdx: t } = init();
+      setDayIdx(d);
+      setTimeIdx(t);
+    }
+  }, [visible]);
+
+  const handleConfirm = () => {
+    const d = new Date(DT_DAYS[dayIdx]);
+    d.setHours(
+      DT_TIME_SLOTS[timeIdx].hours,
+      DT_TIME_SLOTS[timeIdx].minutes,
+      0,
+      0,
+    );
+    onConfirm(d.toISOString());
+  };
+
+  const dayLabel = (d, idx) =>
+    idx === 0 ? "Today" : idx === 1 ? "Tomorrow" : DT_DAY_NAMES[d.getDay()];
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
+      <View style={dtStyles.overlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ flex: 1, justifyContent: "flex-end" }}
+        >
+          <View style={dtStyles.sheet}>
+            <View style={dtStyles.handle} />
+            <View style={dtStyles.header}>
+              <Text style={dtStyles.title}>Estimated Delivery</Text>
+              <TouchableOpacity onPress={onClose}>
+                <Ionicons name="close" size={24} color={COLORS.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Day chips */}
+            <Text style={dtStyles.sectionLabel}>Date</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginBottom: 4 }}
+              contentContainerStyle={{
+                paddingHorizontal: SIZES.screenPadding,
+                gap: 6,
+              }}
+            >
+              {DT_DAYS.map((d, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={[dtStyles.dayChip, dayIdx === idx && dtStyles.chipOn]}
+                  onPress={() => setDayIdx(idx)}
+                >
+                  <Text
+                    style={[
+                      dtStyles.dayName,
+                      dayIdx === idx && dtStyles.textOn,
+                    ]}
+                  >
+                    {dayLabel(d, idx)}
+                  </Text>
+                  <Text
+                    style={[
+                      dtStyles.dayDate,
+                      dayIdx === idx && dtStyles.textOnSub,
+                    ]}
+                  >
+                    {d.getDate()} {DT_MONTH_SHORT[d.getMonth()]}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Time grid */}
+            <Text style={dtStyles.sectionLabel}>Time</Text>
+            <ScrollView
+              style={{ maxHeight: 160 }}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={dtStyles.timeGrid}
+            >
+              {DT_TIME_SLOTS.map((slot, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={[
+                    dtStyles.timeChip,
+                    timeIdx === idx && dtStyles.chipOn,
+                  ]}
+                  onPress={() => setTimeIdx(idx)}
+                >
+                  <Text
+                    style={[
+                      dtStyles.timeText,
+                      timeIdx === idx && dtStyles.textOn,
+                    ]}
+                  >
+                    {slot.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Confirm */}
+            <TouchableOpacity
+              style={dtStyles.confirmBtn}
+              onPress={handleConfirm}
+              activeOpacity={0.85}
+            >
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={18}
+                color="#fff"
+              />
+              <Text style={dtStyles.confirmBtnText}>Set Delivery Time</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
+  );
+}
+
+const dtStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)" },
+  sheet: {
+    backgroundColor: COLORS.bgPrimary || COLORS.bg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.borderLight,
+    alignSelf: "center",
+    marginTop: 10,
+    marginBottom: 12,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: SIZES.screenPadding,
+    marginBottom: SIZES.sm,
+  },
+  title: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textLg,
+    color: COLORS.textPrimary,
+  },
+  sectionLabel: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textSm,
+    color: COLORS.textPrimary,
+    marginBottom: 6,
+    marginTop: SIZES.sm,
+    paddingHorizontal: SIZES.screenPadding,
+  },
+  dayChip: {
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: SIZES.radiusMd,
+    backgroundColor: COLORS.bgCard,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    minWidth: 66,
+  },
+  chipOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  dayName: {
+    fontFamily: FONTS.medium,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+  },
+  dayDate: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  textOn: { color: "#fff", fontFamily: FONTS.semibold },
+  textOnSub: { color: "rgba(255,255,255,0.8)" },
+  timeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    paddingHorizontal: SIZES.screenPadding,
+    paddingBottom: 4,
+  },
+  timeChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.bgCard,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  timeText: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textSecondary,
+  },
+  confirmBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radiusMd,
+    paddingVertical: 14,
+    marginHorizontal: SIZES.screenPadding,
+    marginTop: SIZES.md,
+  },
+  confirmBtnText: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textMd,
+    color: "#fff",
+  },
+});
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function CustomerRepairOrderScreen() {
   const navigation = useNavigation();
   const route = useRoute();
 
+  // When navigated from BookingsScreen, booking data is pre-filled
+  const fromBooking = route.params?.fromBooking ?? null;
+
   // Phase: "search" | "order"
-  const [phase, setPhase] = useState("search");
-  const [customer, setCustomer] = useState(null);
-  const [vehicle, setVehicle] = useState(null);
+  const [phase, setPhase] = useState(fromBooking ? "order" : "search");
+  const [customer, setCustomer] = useState(fromBooking?.customer ?? null);
+  const [vehicle, setVehicle] = useState(fromBooking?.vehicle ?? null);
 
   // Called when returning from CreateCustomerVehicleScreen with a new customer+vehicle
   const handleNewCustomerVehicle = useCallback(
@@ -1746,7 +2122,10 @@ export default function CustomerRepairOrderScreen() {
     [],
   );
 
-  // Form state
+  // Form state — pre-fill customerRemarks from booking if present
+  const bookingRemarks = fromBooking
+    ? [fromBooking.serviceType, fromBooking.notes].filter(Boolean)
+    : [];
   const [form, setForm] = useState({
     vehicleVariant: "",
     odometerReading: null,
@@ -1756,10 +2135,15 @@ export default function CustomerRepairOrderScreen() {
     applyDiscountToAllParts: false,
     images: [],
     tags: [],
-    customerRemarks: [],
-    estimatedDeliveryAt: new Date(
-      Date.now() + 6 * 60 * 60 * 1000,
-    ).toISOString(),
+    customerRemarks: bookingRemarks,
+    // scheduledAt: when the vehicle is expected to arrive (advance booking date).
+    // Pre-fill from booking or customer order's scheduledAt if provided.
+    scheduledAt: fromBooking?.scheduledAt
+      ? new Date(fromBooking.scheduledAt).toISOString()
+      : null,
+    estimatedDeliveryAt: fromBooking?.scheduledAt
+      ? new Date(fromBooking.scheduledAt).toISOString()
+      : new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
     notifyCustomer: false,
   });
 
@@ -1769,6 +2153,8 @@ export default function CustomerRepairOrderScreen() {
   const [showServicePicker, setShowServicePicker] = useState(false);
   const [showPartPicker, setShowPartPicker] = useState(false);
   const [showTagPicker, setShowTagPicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showScheduledPicker, setShowScheduledPicker] = useState(false);
 
   // Saving
   const [saving, setSaving] = useState(false);
@@ -1834,7 +2220,7 @@ export default function CustomerRepairOrderScreen() {
     if (!vehicle?._id || !customer?._id) return;
     setSaving(true);
     try {
-      await axiosClient.post(REPAIR_ORDER_ENDPOINTS.LIST, {
+      const roRes = await axiosClient.post(REPAIR_ORDER_ENDPOINTS.LIST, {
         customerId: customer._id,
         vehicleId: vehicle._id,
         vehicleVariant: form.vehicleVariant,
@@ -1849,12 +2235,25 @@ export default function CustomerRepairOrderScreen() {
         totalAmount: total,
         tags: form.tags,
         customerRemarks: form.customerRemarks,
+        scheduledAt: form.scheduledAt || null,
         estimatedDeliveryAt: form.estimatedDeliveryAt,
         notifyCustomer: form.notifyCustomer,
       });
-      Alert.alert("Success", "Repair order created successfully.", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
+      // If created from a booking, link the RO back silently
+      if (fromBooking?._id) {
+        try {
+          await linkRepairOrder(fromBooking._id, roRes.data?.data?.order?._id);
+        } catch {
+          // non-blocking — RO is already created
+        }
+      }
+      Alert.alert(
+        "Success",
+        fromBooking
+          ? `Repair order created and linked to booking ${fromBooking.bookingNo || ""}.`
+          : "Repair order created successfully.",
+        [{ text: "OK", onPress: () => navigation.goBack() }],
+      );
     } catch (e) {
       Alert.alert(
         "Error",
@@ -1876,15 +2275,30 @@ export default function CustomerRepairOrderScreen() {
       applyDiscountToAllServices: false,
       parts: [],
       applyDiscountToAllParts: false,
-      images: [],
+      // images: [],
       tags: [],
       customerRemarks: [],
+      scheduledAt: null,
       estimatedDeliveryAt: new Date(
         Date.now() + 6 * 60 * 60 * 1000,
       ).toISOString(),
       notifyCustomer: false,
     });
   };
+
+  // ── Scheduled / Advance Booking date display ──────────────────────
+  const scheduledDisplay = form.scheduledAt
+    ? new Date(form.scheduledAt).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+
+  const isAdvanceBooking =
+    form.scheduledAt && new Date(form.scheduledAt) > new Date();
 
   // ── Estimated delivery display ────────────────────────────────────
   const deliveryDisplay = form.estimatedDeliveryAt
@@ -1900,16 +2314,29 @@ export default function CustomerRepairOrderScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <TopNav
-        title="Repair Order"
+        title={
+          fromBooking
+            ? `Booking ${fromBooking.bookingNo || ""}`
+            : "Repair Order"
+        }
         transparent={false}
         rightElement={
-          phase === "order" ? (
+          phase === "order" && !fromBooking ? (
             <TouchableOpacity onPress={handleReset} style={styles.resetBtn}>
               <Text style={styles.resetText}>RESET</Text>
             </TouchableOpacity>
           ) : null
         }
       />
+      {fromBooking && (
+        <View style={styles.bookingBanner}>
+          <Ionicons name="calendar-outline" size={14} color={COLORS.primary} />
+          <Text style={styles.bookingBannerText}>
+            Advance RO from booking {fromBooking.bookingNo || ""}
+            {fromBooking.serviceType ? ` · ${fromBooking.serviceType}` : ""}
+          </Text>
+        </View>
+      )}
 
       {phase === "search" ? (
         <SearchPhase
@@ -2012,7 +2439,7 @@ export default function CustomerRepairOrderScreen() {
           </SectionBlock>
 
           {/* IMAGES section */}
-          <SectionBlock
+          {/* <SectionBlock
             label="IMAGES"
             onAdd={() => Alert.alert("Images", "Image upload coming soon.")}
           >
@@ -2021,7 +2448,7 @@ export default function CustomerRepairOrderScreen() {
                 <Text style={styles.emptyLinesText}>No images attached</Text>
               </View>
             )}
-          </SectionBlock>
+          </SectionBlock> */}
 
           {/* Totals block */}
           <View style={styles.totalsBlock}>
@@ -2041,10 +2468,7 @@ export default function CustomerRepairOrderScreen() {
           </View>
 
           {/* TAGS section */}
-          <SectionBlock
-            label="TAGS"
-            onAdd={() => setShowTagPicker(true)}
-          >
+          <SectionBlock label="TAGS" onAdd={() => setShowTagPicker(true)}>
             {form.tags.length === 0 ? (
               <View style={styles.emptyLines}>
                 <Text style={styles.emptyLinesText}>No tags added</Text>
@@ -2054,7 +2478,12 @@ export default function CustomerRepairOrderScreen() {
                 {form.tags.map((tag) => (
                   <View key={tag} style={styles.tagChip}>
                     <Text style={styles.tagChipText}>{tag}</Text>
-                    <TouchableOpacity onPress={() => setFormField("tags")(form.tags.filter((t) => t !== tag))} activeOpacity={0.7}>
+                    <TouchableOpacity
+                      onPress={() =>
+                        setFormField("tags")(form.tags.filter((t) => t !== tag))
+                      }
+                      activeOpacity={0.7}
+                    >
                       <Ionicons name="close" size={13} color={COLORS.primary} />
                     </TouchableOpacity>
                   </View>
@@ -2093,16 +2522,93 @@ export default function CustomerRepairOrderScreen() {
             ))}
           </SectionBlock>
 
+          {/* ── Scheduled Date (Advance Booking) ────────────────────── */}
+          <View
+            style={[
+              styles.deliveryRow,
+              isAdvanceBooking && styles.advScheduledSection,
+            ]}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+            >
+              <Text
+                style={[
+                  styles.deliveryLabel,
+                  isAdvanceBooking && { color: "#D97706" },
+                ]}
+              >
+                Scheduled Date
+              </Text>
+              {isAdvanceBooking && (
+                <View style={styles.advBannerPill}>
+                  <Ionicons name="time-outline" size={10} color="#92400E" />
+                  <Text style={styles.advBannerPillTxt}>Advance Booking</Text>
+                </View>
+              )}
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowScheduledPicker(true)}
+              activeOpacity={0.8}
+              style={[
+                styles.deliveryPickerBtn,
+                isAdvanceBooking && styles.advPickerBtn,
+              ]}
+            >
+              <Ionicons
+                name="calendar-outline"
+                size={14}
+                color={isAdvanceBooking ? "#D97706" : COLORS.textMuted}
+              />
+              <Text
+                style={[
+                  styles.deliveryValue,
+                  isAdvanceBooking && { color: "#D97706" },
+                ]}
+              >
+                {scheduledDisplay ?? "Not scheduled (walk-in)"}
+              </Text>
+              <Ionicons
+                name="chevron-down-outline"
+                size={13}
+                color={COLORS.textMuted}
+              />
+            </TouchableOpacity>
+            {form.scheduledAt && (
+              <TouchableOpacity
+                onPress={() => setFormField("scheduledAt")(null)}
+                style={styles.clearBtn}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="close-circle-outline"
+                  size={14}
+                  color={COLORS.textMuted}
+                />
+                <Text style={styles.clearBtnTxt}>Clear (walk-in)</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           {/* Estimated delivery + notify */}
           <View style={styles.deliveryRow}>
             <Text style={styles.deliveryLabel}>Estimated delivery time</Text>
             <TouchableOpacity
-              onPress={() =>
-                Alert.alert("Delivery time", "Date picker coming soon.")
-              }
+              onPress={() => setShowDatePicker(true)}
               activeOpacity={0.8}
+              style={styles.deliveryPickerBtn}
             >
+              <Ionicons
+                name="calendar-outline"
+                size={14}
+                color={COLORS.primary}
+              />
               <Text style={styles.deliveryValue}>{deliveryDisplay}</Text>
+              <Ionicons
+                name="chevron-down-outline"
+                size={13}
+                color={COLORS.textMuted}
+              />
             </TouchableOpacity>
           </View>
 
@@ -2146,6 +2652,25 @@ export default function CustomerRepairOrderScreen() {
         selectedTags={form.tags}
         onConfirm={(tags) => setFormField("tags")(tags)}
       />
+      <DeliveryDatePickerModal
+        visible={showDatePicker}
+        current={form.estimatedDeliveryAt}
+        onClose={() => setShowDatePicker(false)}
+        onConfirm={(iso) => {
+          setFormField("estimatedDeliveryAt")(iso);
+          setShowDatePicker(false);
+        }}
+      />
+      {/* Reuse the same date-time picker for the scheduled (advance) date */}
+      <DeliveryDatePickerModal
+        visible={showScheduledPicker}
+        current={form.scheduledAt ?? new Date().toISOString()}
+        onClose={() => setShowScheduledPicker(false)}
+        onConfirm={(iso) => {
+          setFormField("scheduledAt")(iso);
+          setShowScheduledPicker(false);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -2153,6 +2678,23 @@ export default function CustomerRepairOrderScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
+
+  bookingBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: SIZES.screenPadding,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.primary + "30",
+  },
+  bookingBannerText: {
+    fontFamily: FONTS.medium,
+    fontSize: SIZES.textXs,
+    color: COLORS.primary,
+    flex: 1,
+  },
 
   resetBtn: { paddingHorizontal: SIZES.sm },
   resetText: {
@@ -2568,6 +3110,66 @@ const styles = StyleSheet.create({
     fontSize: SIZES.textSm,
     color: COLORS.textPrimary,
   },
+  deliveryPickerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: COLORS.primaryLight || "#EFF6FF",
+    borderRadius: SIZES.radiusFull,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: COLORS.primary + "40",
+  },
+
+  // ── Advance booking styles ─────────────────────────────────────────
+  advScheduledSection: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+    paddingTop: SIZES.sm,
+    paddingBottom: SIZES.sm,
+    paddingHorizontal: SIZES.screenPadding,
+    marginHorizontal: 0,
+    backgroundColor: "#FFFBEB",
+    borderLeftWidth: 3,
+    borderLeftColor: "#F59E0B",
+    borderBottomWidth: 1,
+    borderBottomColor: "#FCD34D",
+    marginBottom: SIZES.sm,
+    gap: 6,
+  },
+  advBannerPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 99,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: "#FCD34D",
+  },
+  advBannerPillTxt: {
+    fontFamily: FONTS.semibold,
+    fontSize: 9,
+    color: "#92400E",
+  },
+  advPickerBtn: {
+    backgroundColor: "#FEF3C7",
+    borderColor: "#F59E0B",
+  },
+  clearBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
+  clearBtnTxt: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+  },
+
   notifyRow: { paddingHorizontal: SIZES.screenPadding, marginBottom: SIZES.md },
 
   // Continue
@@ -2637,11 +3239,39 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   // Tag chips (selected tags display)
-  tagChipRow:  { flexDirection: "row", flexWrap: "wrap", gap: SIZES.xs, paddingHorizontal: SIZES.md, paddingBottom: SIZES.sm },
-  tagChip:     { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderColor: COLORS.primary, borderRadius: SIZES.radiusFull, paddingHorizontal: SIZES.sm + 2, paddingVertical: 4, backgroundColor: COLORS.primaryLight },
-  tagChipText: { fontFamily: FONTS.medium, fontSize: SIZES.textXs, color: COLORS.primary },
+  tagChipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: SIZES.xs,
+    paddingHorizontal: SIZES.md,
+    paddingBottom: SIZES.sm,
+  },
+  tagChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: SIZES.radiusFull,
+    paddingHorizontal: SIZES.sm + 2,
+    paddingVertical: 4,
+    backgroundColor: COLORS.primaryLight,
+  },
+  tagChipText: {
+    fontFamily: FONTS.medium,
+    fontSize: SIZES.textXs,
+    color: COLORS.primary,
+  },
   // Tag picker modal chips
-  tagPickerChip:  { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1.5, borderRadius: SIZES.radiusFull, paddingHorizontal: SIZES.md, paddingVertical: 7 },
-  tagPickerDot:   { width: 8, height: 8, borderRadius: 4 },
+  tagPickerChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderWidth: 1.5,
+    borderRadius: SIZES.radiusFull,
+    paddingHorizontal: SIZES.md,
+    paddingVertical: 7,
+  },
+  tagPickerDot: { width: 8, height: 8, borderRadius: 4 },
   tagPickerLabel: { fontFamily: FONTS.semibold, fontSize: SIZES.textSm },
 });

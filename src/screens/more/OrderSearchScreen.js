@@ -38,6 +38,13 @@ const STATUS_CFG = {
   cancelled:     { label: "Cancelled", color: COLORS.error,   bg: COLORS.errorLight   },
 };
 
+// Maps each status to its next step — drives the action footer in OrderRow
+const STATUS_FLOW = {
+  created:       { nextStatus: "in_progress",   nextLabel: "WIP",      actionLabel: "Move to WIP",    color: "#BA7517",      bg: "#FEF3C7", icon: "play-circle-outline"        },
+  in_progress:   { nextStatus: "vehicle_ready", nextLabel: "Ready",    actionLabel: "Mark as Ready",  color: COLORS.success, bg: COLORS.successLight, icon: "checkbox-outline" },
+  vehicle_ready: { nextStatus: "completed",     nextLabel: "Complete", actionLabel: "Mark Complete",  color: COLORS.primary, bg: COLORS.primaryLight, icon: "checkmark-circle-outline" },
+};
+
 function getDateRange(key) {
   const n = new Date();
   if (key === "today")
@@ -55,54 +62,103 @@ function fmt(n) { return Number(n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))
 function fmtDate(d) { if (!d) return "—"; return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); }
 
 // ─── Order Row ────────────────────────────────────────────────────────────────
-function OrderRow({ item, isLast, onPress }) {
-  const cfg = STATUS_CFG[item.status] ?? STATUS_CFG.created;
-  const isActionable = item.status === "completed" || item.status === "vehicle_ready";
+function OrderRow({ item, isLast, onPress, onStatusPress }) {
+  const cfg      = STATUS_CFG[item.status] ?? STATUS_CFG.created;
+  const flowCfg  = STATUS_FLOW[item.status] ?? null;
+  const isCompleted = item.status === "completed";
+
   return (
-    <TouchableOpacity
-      style={[s.row, isLast && s.rowLast]}
-      onPress={onPress}
-      activeOpacity={isActionable ? 0.7 : 1}
-      disabled={!isActionable}
-    >
-      <View style={s.rowLeft}>
-        <Text style={s.rowPrimary}>{item.orderNo ?? "—"}</Text>
-        <Text style={s.rowSub} numberOfLines={1}>
-          {item.customerId?.fullName ?? "—"} · {item.vehicleId?.vehicleRegisterNo ?? ""}
-        </Text>
-        <Text style={s.rowDate}>{fmtDate(item.createdAt)}</Text>
-      </View>
-      <View style={s.rowRight}>
-        <View style={[s.badge, { backgroundColor: cfg.bg }]}>
-          <Text style={[s.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
+    <View style={[s.row, isLast && s.rowLast]}>
+      {/* ── Main info ─────────────────────────────────────────────── */}
+      <View style={s.rowMain}>
+        <View style={s.rowLeft}>
+          <View style={s.rowTopLine}>
+            <Text style={s.rowPrimary}>{item.orderNo ?? "—"}</Text>
+            <View style={[s.badge, { backgroundColor: cfg.bg }]}>
+              <View style={[s.badgeDot, { backgroundColor: cfg.color }]} />
+              <Text style={[s.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
+            </View>
+          </View>
+          <Text style={s.rowSub} numberOfLines={1}>
+            {item.customerId?.fullName ?? "—"}
+            {item.vehicleId?.vehicleRegisterNo ? ` · ${item.vehicleId.vehicleRegisterNo}` : ""}
+          </Text>
+          <View style={s.rowBottomLine}>
+            <Text style={s.rowDate}>{fmtDate(item.createdAt)}</Text>
+            <Text style={s.rowAmt}>₹{fmt(item.totalAmount)}</Text>
+          </View>
         </View>
-        <Text style={s.rowAmt}>₹{fmt(item.totalAmount)}</Text>
-        {isActionable && (
-          <Ionicons name="receipt-outline" size={14} color={COLORS.primary} style={{ marginTop: 2 }} />
-        )}
       </View>
-    </TouchableOpacity>
+
+      {/* ── Status action footer ───────────────────────────────────── */}
+      {flowCfg && (
+        <TouchableOpacity
+          style={[s.actionStrip, { backgroundColor: flowCfg.bg }]}
+          onPress={() => onStatusPress(item)}
+          activeOpacity={0.75}
+        >
+          {/* Current status pill */}
+          <View style={[s.flowPill, { borderColor: cfg.color }]}>
+            <Text style={[s.flowPillText, { color: cfg.color }]}>{cfg.label}</Text>
+          </View>
+
+          {/* Arrow */}
+          <Ionicons name="arrow-forward" size={14} color={flowCfg.color} />
+
+          {/* Next status pill */}
+          <View style={[s.flowPill, s.flowPillNext, { borderColor: flowCfg.color, backgroundColor: flowCfg.color }]}>
+            <Text style={[s.flowPillText, { color: COLORS.white }]}>{flowCfg.nextLabel}</Text>
+          </View>
+
+          <View style={s.actionStripSpacer} />
+
+          <Text style={[s.actionStripHint, { color: flowCfg.color }]}>{flowCfg.actionLabel}</Text>
+          <Ionicons name="chevron-forward" size={14} color={flowCfg.color} />
+        </TouchableOpacity>
+      )}
+
+      {/* ── View Invoice footer (completed orders) ─────────────────── */}
+      {isCompleted && (
+        <TouchableOpacity
+          style={s.invoiceStrip}
+          onPress={onPress}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="receipt-outline" size={14} color={COLORS.primary} />
+          <Text style={s.invoiceStripText}>View Invoice</Text>
+          <View style={s.actionStripSpacer} />
+          <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
 // ─── Invoice Row ──────────────────────────────────────────────────────────────
 function InvoiceRow({ item, isLast, onPress }) {
   const isPaid = item.paymentStatus === "paid";
+  const isPartial = item.paymentStatus === "partial";
+  const payColor = isPaid ? COLORS.success : isPartial ? "#BA7517" : COLORS.error;
+  const payBg    = isPaid ? COLORS.successLight : isPartial ? "#FFFBEB" : COLORS.errorLight;
+  const payLabel = isPaid ? "Paid" : isPartial ? "Partial" : "Unpaid";
+
   return (
     <TouchableOpacity style={[s.row, isLast && s.rowLast]} onPress={onPress} activeOpacity={0.7}>
-      <View style={s.rowLeft}>
-        <Text style={s.rowPrimary}>{item.invoiceNo ?? "—"}</Text>
-        <Text style={s.rowSub} numberOfLines={1}>{item.customerId?.fullName ?? "—"}</Text>
-        <Text style={s.rowDate}>{fmtDate(item.createdAt)}</Text>
-      </View>
-      <View style={s.rowRight}>
-        <View style={[s.badge, { backgroundColor: isPaid ? COLORS.successLight : COLORS.errorLight }]}>
-          <Text style={[s.badgeText, { color: isPaid ? COLORS.success : COLORS.error }]}>
-            {isPaid ? "Paid" : item.paymentStatus === "partial" ? "Partial" : "Unpaid"}
-          </Text>
+      <View style={s.rowMain}>
+        <View style={s.rowLeft}>
+          <View style={s.rowTopLine}>
+            <Text style={s.rowPrimary}>{item.invoiceNo ?? "—"}</Text>
+            <View style={[s.badge, { backgroundColor: payBg }]}>
+              <View style={[s.badgeDot, { backgroundColor: payColor }]} />
+              <Text style={[s.badgeText, { color: payColor }]}>{payLabel}</Text>
+            </View>
+          </View>
+          <Text style={s.rowSub} numberOfLines={1}>{item.customerId?.fullName ?? "—"}</Text>
+          <View style={s.rowBottomLine}>
+            <Text style={s.rowDate}>{fmtDate(item.createdAt)}</Text>
+            <Text style={s.rowAmt}>₹{fmt(item.totalAmount)}</Text>
+          </View>
         </View>
-        <Text style={s.rowAmt}>₹{fmt(item.totalAmount)}</Text>
-        <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} style={{ marginTop: 2 }} />
       </View>
     </TouchableOpacity>
   );
@@ -177,6 +233,33 @@ export default function OrderSearchScreen() {
       Alert.alert("Error", "Could not load invoice.");
     }
   }, [navigation]);
+
+  const handleStatusUpdate = useCallback((order) => {
+    const flowCfg = STATUS_FLOW[order.status];
+    if (!flowCfg) return;
+    const customerName = order.customerId?.fullName ?? "this order";
+    Alert.alert(
+      flowCfg.actionLabel,
+      `Move "${customerName}" from ${STATUS_CFG[order.status]?.label} → ${flowCfg.nextLabel}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes, move it",
+          onPress: async () => {
+            try {
+              await axiosClient.put(REPAIR_ORDER_ENDPOINTS.DETAIL(order._id), {
+                status: flowCfg.nextStatus,
+              });
+              // Refresh current results in-place
+              doSearch(query, tab, dateFilter);
+            } catch (e) {
+              Alert.alert("Error", e.displayMessage || "Could not update status.");
+            }
+          },
+        },
+      ],
+    );
+  }, [doSearch, query, tab, dateFilter]);
 
   const handleInvoicePress = useCallback((invoice) => {
     navigation.navigate("InvoiceDetail", { invoice });
@@ -266,7 +349,7 @@ export default function OrderSearchScreen() {
           }
           renderItem={({ item, index }) =>
             tab === "orders"
-              ? <OrderRow item={item} isLast={index === results.length - 1} onPress={() => handleOrderPress(item)} />
+              ? <OrderRow item={item} isLast={index === results.length - 1} onPress={() => handleOrderPress(item)} onStatusPress={handleStatusUpdate} />
               : <InvoiceRow item={item} isLast={index === results.length - 1} onPress={() => handleInvoicePress(item)} />
           }
           ItemSeparatorComponent={null}
@@ -329,24 +412,76 @@ const s = StyleSheet.create({
   resultCount: { fontFamily: FONTS.medium, fontSize: SIZES.textSm, color: COLORS.textMuted, paddingVertical: SIZES.sm },
 
   row: {
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: COLORS.bgCard,
     borderRadius: SIZES.radiusLg,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
-    padding: SIZES.md,
     marginBottom: SIZES.sm,
+    overflow: "hidden",
     ...SHADOWS.sm,
   },
-  rowLast:    {},
-  rowLeft:    { flex: 1, gap: 3, marginRight: SIZES.sm },
-  rowPrimary: { fontFamily: FONTS.semibold, fontSize: SIZES.textBase, color: COLORS.textPrimary },
-  rowSub:     { fontFamily: FONTS.regular, fontSize: SIZES.textSm, color: COLORS.textSecondary },
-  rowDate:    { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted },
-  rowRight:   { alignItems: "flex-end", gap: 5 },
-  rowAmt:     { fontFamily: FONTS.bold, fontSize: SIZES.textSm, color: COLORS.textPrimary },
+  rowLast: {},
+  rowMain: { padding: SIZES.md },
+  rowLeft: { flex: 1, gap: 4 },
 
-  badge:     { paddingHorizontal: 8, paddingVertical: 3, borderRadius: SIZES.radiusFull },
+  rowTopLine:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SIZES.sm },
+  rowBottomLine: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 2 },
+
+  rowPrimary: { fontFamily: FONTS.semibold, fontSize: SIZES.textBase, color: COLORS.textPrimary },
+  rowSub:     { fontFamily: FONTS.regular,  fontSize: SIZES.textSm,   color: COLORS.textSecondary },
+  rowDate:    { fontFamily: FONTS.regular,  fontSize: SIZES.textXs,   color: COLORS.textMuted },
+  rowAmt:     { fontFamily: FONTS.bold,     fontSize: SIZES.textSm,   color: COLORS.textPrimary },
+
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: SIZES.radiusFull,
+  },
+  badgeDot:  { width: 6, height: 6, borderRadius: 3 },
   badgeText: { fontFamily: FONTS.semibold, fontSize: SIZES.textXs },
+
+  // ── Status action strip ───────────────────────────────────────────
+  actionStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: SIZES.md,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    gap: 6,
+  },
+  actionStripSpacer: { flex: 1 },
+  actionStripHint: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textXs,
+  },
+
+  flowPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: SIZES.radiusFull,
+    borderWidth: 1,
+  },
+  flowPillNext: { borderWidth: 0 },
+  flowPillText: { fontFamily: FONTS.semibold, fontSize: SIZES.textXs },
+
+  // ── Invoice strip (completed) ─────────────────────────────────────
+  invoiceStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: SIZES.md,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    backgroundColor: COLORS.primaryLight,
+    gap: 6,
+  },
+  invoiceStripText: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textXs,
+    color: COLORS.primary,
+  },
 });

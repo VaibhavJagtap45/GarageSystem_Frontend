@@ -10,6 +10,7 @@ import {
   TextInput,
   ScrollView,
   Platform,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -23,11 +24,9 @@ import axiosClient from "../../api/axios";
 const PAGE_SIZE = 20;
 
 const STATUS_TABS = [
-  { label: "All",       value: ""          },
-  { label: "Draft",     value: "draft"     },
-  { label: "Sent",      value: "sent"      },
-  { label: "Paid",      value: "paid"      },
-  { label: "Cancelled", value: "cancelled" },
+  { label: "All",    value: ""       },
+  { label: "Paid",   value: "paid"   },
+  { label: "Unpaid", value: "unpaid" },
 ];
 
 const STATUS_CONFIG = {
@@ -61,17 +60,15 @@ function fmtDate(dateStr) {
 }
 
 // ─── Invoice Card ─────────────────────────────────────────────────────────────
-function InvoiceCard({ item, onPress }) {
-  const statusCfg =
-    STATUS_CONFIG[item.status] ?? STATUS_CONFIG.draft;
-  const paymentCfg =
-    PAYMENT_STATUS_CONFIG[item.paymentStatus] ?? PAYMENT_STATUS_CONFIG.unpaid;
-  const customer = item.customerId;
-  const vehicle = item.vehicleId;
+function InvoiceCard({ item, onPress, onDelete }) {
+  const statusCfg  = STATUS_CONFIG[item.status]           ?? STATUS_CONFIG.draft;
+  const paymentCfg = PAYMENT_STATUS_CONFIG[item.paymentStatus] ?? PAYMENT_STATUS_CONFIG.unpaid;
+  const customer   = item.customerId;
+  const vehicle    = item.vehicleId;
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
-      {/* Card top: invoice no + date + status */}
+      {/* Card top: invoice no + date + status badge */}
       <View style={styles.cardTop}>
         <View style={styles.cardTopLeft}>
           <Text style={styles.invoiceNo}>{item.invoiceNo ?? "—"}</Text>
@@ -126,7 +123,7 @@ function InvoiceCard({ item, onPress }) {
         </View>
       </View>
 
-      {/* Payment status + tags */}
+      {/* Footer: payment status + tags + delete */}
       <View style={styles.cardFooter}>
         <View style={styles.paymentChip}>
           <Ionicons name="card-outline" size={12} color={paymentCfg.color} />
@@ -144,12 +141,22 @@ function InvoiceCard({ item, onPress }) {
             · {item.tags.join(", ")}
           </Text>
         ) : null}
-        <Ionicons
-          name="chevron-forward"
-          size={14}
-          color={COLORS.textMuted}
-          style={{ marginLeft: "auto" }}
-        />
+
+        {/* spacer pushes right-side actions to edge */}
+        <View style={{ flex: 1 }} />
+
+        {/* Delete button */}
+        <TouchableOpacity
+          onPress={(e) => { e.stopPropagation?.(); onDelete(item); }}
+          hitSlop={{ top: 8, bottom: 8, left: 12, right: 8 }}
+          style={styles.deleteBtn}
+          activeOpacity={0.6}
+        >
+          <Ionicons name="trash-outline" size={15} color={COLORS.error} />
+        </TouchableOpacity>
+
+        {/* Navigate-to-detail arrow */}
+        <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
       </View>
     </TouchableOpacity>
   );
@@ -209,7 +216,7 @@ export default function InvoiceListScreen() {
 
       try {
         const params = { page: p, limit: PAGE_SIZE };
-        if (tab) params.status = tab;
+        if (tab) params.paymentStatus = tab;
         if (q.trim()) params.search = q.trim();
 
         const res = await axiosClient.get(INVOICE_ENDPOINTS.LIST, { params });
@@ -279,6 +286,29 @@ export default function InvoiceListScreen() {
 
   const goToCreate = () => navigation.navigate("CounterSale");
 
+  const handleDeleteInvoice = useCallback((item) => {
+    Alert.alert(
+      "Delete Invoice",
+      `Delete ${item.invoiceNo ?? "this invoice"}? This action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await axiosClient.delete(INVOICE_ENDPOINTS.DETAIL(item._id));
+              setInvoices((prev) => prev.filter((inv) => inv._id !== item._id));
+              setTotal((prev) => Math.max(0, prev - 1));
+            } catch (e) {
+              Alert.alert("Error", e.displayMessage || "Could not delete invoice.");
+            }
+          },
+        },
+      ],
+    );
+  }, []);
+
   // ── Render ─────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
@@ -325,28 +355,32 @@ export default function InvoiceListScreen() {
       </View>
 
       {/* Status filter tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabsScroll}
-        contentContainerStyle={styles.tabsContent}
-      >
-        {STATUS_TABS.map((tab) => {
-          const isActive = activeTab === tab.value;
-          return (
-            <TouchableOpacity
-              key={tab.value}
-              style={[styles.tab, isActive && styles.tabActive]}
-              onPress={() => onTabChange(tab.value)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      <View style={styles.tabsWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabsScroll}
+          contentContainerStyle={styles.tabsContent}
+        >
+          {STATUS_TABS.map((tab) => {
+            const isActive = activeTab === tab.value;
+            return (
+              <TouchableOpacity
+                key={tab.value}
+                style={[styles.tab, isActive && styles.tabActive]}
+                onPress={() => onTabChange(tab.value)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+        {/* Hairline separator anchors tabs above the list */}
+        <View style={styles.tabsSeparator} />
+      </View>
 
       {/* Loading state */}
       {loading && !refreshing ? (
@@ -358,7 +392,11 @@ export default function InvoiceListScreen() {
           data={invoices}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
-            <InvoiceCard item={item} onPress={() => goToDetail(item)} />
+            <InvoiceCard
+              item={item}
+              onPress={() => goToDetail(item)}
+              onDelete={handleDeleteInvoice}
+            />
           )}
           contentContainerStyle={[
             styles.listContent,
@@ -440,11 +478,24 @@ const styles = StyleSheet.create({
   },
 
   // Status tabs
-  tabsScroll: { flexGrow: 0 },
+  tabsWrapper: {
+    // flex: 0 keeps this block from growing and pushing the list off-screen
+    flexGrow: 0,
+    flexShrink: 0,
+    backgroundColor: COLORS.bg,
+  },
+  tabsScroll: { flexGrow: 0, flexShrink: 0 },
   tabsContent: {
     paddingHorizontal: SIZES.screenPadding,
     paddingVertical: SIZES.xs,
     gap: SIZES.xs,
+    alignItems: "center",
+  },
+  tabsSeparator: {
+    height: 1,
+    backgroundColor: COLORS.borderLight,
+    marginHorizontal: SIZES.screenPadding,
+    marginBottom: SIZES.xs,
   },
   tab: {
     paddingHorizontal: 16,
@@ -620,7 +671,10 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: SIZES.textXs,
     color: COLORS.textMuted,
-    flex: 1,
+  },
+  deleteBtn: {
+    padding: 4,
+    borderRadius: SIZES.radiusSm,
   },
 
   // Empty state

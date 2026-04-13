@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -13,6 +12,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { COLORS, FONTS, SIZES, SHADOWS } from "../../utils/constants";
 import TopNav from "../../components/ui/TopNav";
 import { useNavigation } from "@react-navigation/native";
+import { useFontSizes } from "../../context/PreferencesContext";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const GARAGE_SETTINGS = [
@@ -77,7 +77,7 @@ const GARAGE_SETTINGS = [
     icon: "calendar-sync-outline",
     accent: COLORS.error,
     accentSoft: COLORS.errorLight,
-    onPress: () => Alert.alert("Google Calendar", "Coming soon"),
+    onPress: (nav) => nav.navigate("GoogleCalendarSettings"),
   },
 ];
 
@@ -85,71 +85,50 @@ const PREFERENCES = [
   {
     id: "preferences",
     title: "General Preferences",
-    subtitle: "App settings and notifications",
+    subtitle: "Font size, notifications, WhatsApp automation",
     icon: "cog-outline",
     accent: COLORS.textPrimary,
     accentSoft: COLORS.borderLight,
-    onPress: () => Alert.alert("Preferences", "Coming soon"),
+    onPress: (nav) => nav.navigate("GeneralPreferences"),
   },
 ];
 
-const ADDON_MODULES = [
-  {
-    id: "parts_approval",
-    title: "Parts Approval Process",
-    subtitle: "Require approval for costly parts",
-    icon: "check-decagram-outline",
-    accent: COLORS.success,
-    accentSoft: COLORS.primaryLight,
-    onPress: () => Alert.alert("Parts Approval Process", "Coming soon"),
-  },
-  {
-    id: "booking_portal",
-    title: "Customer Booking Portal",
-    subtitle: "Enable online appointments",
-    icon: "web",
-    accent: COLORS.primary,
-    accentSoft: COLORS.primaryLight,
-    onPress: () => Alert.alert("Customer Booking Portal", "Coming soon"),
-  },
-  {
-    id: "feedback_ivr",
-    title: "Post Service Feedback (IVR)",
-    subtitle: "Automated customer follow-ups",
-    icon: "phone-in-talk-outline",
-    accent: COLORS.secondary,
-    accentSoft: "#FFFBEB",
-    onPress: () => Alert.alert("Post Service Feedback", "Coming soon"),
-  },
-  {
-    id: "invoice_pdf",
-    title: "Customise Estimate/Invoice PDF",
-    subtitle: "Format options for printing",
-    icon: "file-pdf-box",
-    accent: COLORS.error,
-    accentSoft: COLORS.errorLight,
-    onPress: () => Alert.alert("Invoice PDF Format", "Coming soon"),
-  },
-  {
-    id: "payment_gateway",
-    title: "Enable Payment Gateway",
-    subtitle: "Accept online payments",
-    icon: "credit-card-outline",
-    accent: COLORS.success,
-    accentSoft: COLORS.primaryLight,
-    onPress: () => Alert.alert("Payment Gateway", "Coming soon"),
-  },
-];
+// const ADDON_MODULES = [
+//   {
+//     id: "booking_portal",
+//     title: "Customer Booking Portal",
+//     subtitle: "Enable online appointments",
+//     icon: "web",
+//     accent: COLORS.primary,
+//     accentSoft: COLORS.primaryLight,
+//     onPress: (nav) => nav.navigate("Bookings"),
+//   },
+
+//   {
+//     id: "invoice_pdf",
+//     title: "Customise Estimate/Invoice PDF",
+//     subtitle: "Format options for printing",
+//     icon: "file-pdf-box",
+//     accent: COLORS.error,
+//     accentSoft: COLORS.errorLight,
+//     onPress: () => Alert.alert("Invoice PDF Format", "Coming soon"),
+//   },
+// ];
 
 // ─── Components ───────────────────────────────────────────────────────────────
 
 function SectionHeader({ title, actionLabel, onAction }) {
+  const fs = useFontSizes();
   return (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={[styles.sectionTitle, { fontSize: fs.textMd }]}>
+        {title}
+      </Text>
       {actionLabel && (
         <TouchableOpacity onPress={onAction} accessibilityRole="button">
-          <Text style={styles.sectionAction}>{actionLabel}</Text>
+          <Text style={[styles.sectionAction, { fontSize: fs.textSm }]}>
+            {actionLabel}
+          </Text>
         </TouchableOpacity>
       )}
     </View>
@@ -157,6 +136,7 @@ function SectionHeader({ title, actionLabel, onAction }) {
 }
 
 function ActionRow({ item, navigation, isLast }) {
+  const fs = useFontSizes();
   return (
     <TouchableOpacity
       style={[styles.actionRow, isLast && styles.actionRowLast]}
@@ -173,9 +153,13 @@ function ActionRow({ item, navigation, isLast }) {
         />
       </View>
       <View style={styles.actionContent}>
-        <Text style={styles.actionTitle}>{item.title}</Text>
+        <Text style={[styles.actionTitle, { fontSize: fs.textBase }]}>
+          {item.title}
+        </Text>
         {item.subtitle ? (
-          <Text style={styles.actionSub}>{item.subtitle}</Text>
+          <Text style={[styles.actionSub, { fontSize: fs.textSm }]}>
+            {item.subtitle}
+          </Text>
         ) : null}
       </View>
       <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
@@ -225,7 +209,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Add-On Modules */}
-        <SectionHeader title="Add-On Modules (Optional)" />
+        {/* <SectionHeader title="Add-On Modules (Optional)" />
         <View style={styles.section}>
           {ADDON_MODULES.map((item, index) => (
             <ActionRow
@@ -235,7 +219,7 @@ export default function SettingsScreen() {
               isLast={index === ADDON_MODULES.length - 1}
             />
           ))}
-        </View>
+        </View> */}
       </ScrollView>
     </SafeAreaView>
   );

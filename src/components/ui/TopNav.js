@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS, FONTS, SIZES, SHADOWS } from "../../utils/constants";
+import { useFontSizes } from "../../context/PreferencesContext";
 
 /**
  * TopNav
@@ -35,6 +36,7 @@ function TopNav({
   const insets = useSafeAreaInsets();
 
   const pageTitle = title || route.name;
+  const fs = useFontSizes();
 
   const handleBack = () => {
     if (onBackPress) {
@@ -77,7 +79,7 @@ function TopNav({
                 />
               </TouchableOpacity>
             )}
-            <Text style={styles.title} numberOfLines={1}>
+            <Text style={[styles.title, { fontSize: fs.textLg }]} numberOfLines={1}>
               {pageTitle}
             </Text>
           </View>

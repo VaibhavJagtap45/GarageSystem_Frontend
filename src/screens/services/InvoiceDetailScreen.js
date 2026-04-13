@@ -1195,10 +1195,10 @@ import axiosClient from "../../api/axios";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
-  draft: { label: "Draft", color: COLORS.textMuted, bg: COLORS.bgSection },
-  sent: { label: "Sent", color: COLORS.warning, bg: COLORS.warningLight },
-  paid: { label: "Paid", color: COLORS.success, bg: COLORS.successLight },
-  cancelled: { label: "Cancelled", color: COLORS.error, bg: COLORS.errorLight },
+  draft:     { label: "Draft",     color: COLORS.textMuted, bg: COLORS.bgSection  },
+  sent:      { label: "Sent",      color: COLORS.warning,   bg: COLORS.warningLight },
+  paid:      { label: "Paid",      color: COLORS.success,   bg: COLORS.successLight },
+  cancelled: { label: "Cancelled", color: COLORS.error,     bg: COLORS.errorLight   },
 };
 
 const PAYMENT_STATUS_CONFIG = {
@@ -1225,260 +1225,343 @@ function fmtDate(dateStr) {
 }
 
 // ─── PDF HTML Builder ─────────────────────────────────────────────────────────
+// Mirrors the app's InvoiceDetailScreen card UI exactly — same colors, layout, sections.
 function buildPdfHtml(invoice, garage) {
+  // ── Data extraction ──────────────────────────────────────────────────────────
   const customer = invoice.customerId;
   const vehicle = invoice.vehicleId;
 
   const garageName = garage?.garageName ?? "Garage";
-  const garageAddress = garage?.garageAddress ?? "";
+  const garageAddr = garage?.garageAddress ?? "";
   const garagePhone = garage?.garageContactNumber ?? "";
   const garageGst = garage?.gstNumber ?? "";
 
-  const logoLetter = garageName.charAt(0).toUpperCase();
-  const logoHtml = garage?.garageLogo
-    ? `<img src="${garage.garageLogo}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;flex-shrink:0;" />`
-    : `<div class="logo-circle">${logoLetter}</div>`;
-
-  const serviceRows = (invoice.services ?? [])
-    .map(
-      (s) => `
-      <tr>
-        <td>${s.name ?? ""}</td>
-        <td style="text-align:center">1</td>
-        <td style="text-align:right">${fmt(s.price ?? s.lineTotal)}</td>
-        <td style="text-align:right">${fmt(s.lineTotal)}</td>
-      </tr>`,
-    )
-    .join("");
-
-  const partRows = (invoice.parts ?? [])
-    .map(
-      (p) => `
-      <tr>
-        <td>${p.name ?? ""}</td>
-        <td style="text-align:center">${p.quantity ?? 1}</td>
-        <td style="text-align:right">${fmt(p.unitPrice)}</td>
-        <td style="text-align:right">${fmt(p.lineTotal)}</td>
-      </tr>`,
-    )
-    .join("");
-
+  const isPaid = invoice.paymentStatus === "paid";
+  const isPartial = invoice.paymentStatus === "partial";
   const subTotal =
     (invoice.servicesSubTotal ?? 0) + (invoice.partsSubTotal ?? 0);
-  const grandTotal = invoice.totalAmount ?? 0;
+  const payMode = (invoice.paymentMode ?? "cash")
+    .replace(/_/g, " ")
+    .toUpperCase();
+  const payStatus = (invoice.paymentStatus ?? "unpaid").toUpperCase();
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-          font-family: 'Courier New', Courier, monospace;
-          font-size: 12px;
-          padding: 24px;
-          color: #000;
-          background: #fff;
-        }
-        h1 {
-          text-align: center;
-          font-size: 20px;
-          font-weight: bold;
-          margin-bottom: 16px;
-          letter-spacing: 1px;
-        }
-        /* ── Top header ── */
-        .top-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          border: 1px solid #ccc;
-          padding: 16px;
-          margin-bottom: 0;
-        }
-        .logo-circle {
-          width: 80px;
-          height: 80px;
-          border-radius: 50%;
-          background: #1a6b45;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #fff;
-          font-size: 32px;
-          font-weight: bold;
-          text-align: center;
-          line-height: 80px;
-          flex-shrink: 0;
-        }
-        .garage-info { text-align: right; line-height: 1.7; }
-        .garage-name { font-weight: bold; font-size: 14px; letter-spacing: 0.5px; }
-        /* ── Tables ── */
-        table { width: 100%; border-collapse: collapse; }
-        .section-hdr td {
-          background: #BDD7EE;
-          font-weight: bold;
-          padding: 6px 8px;
-          border: 1px solid #9DC3E6;
-          font-size: 11px;
-          letter-spacing: 0.5px;
-        }
-        tbody tr td { padding: 5px 8px; border-bottom: 1px solid #e8e8e8; }
-        .total-row td {
-          font-weight: bold;
-          border-top: 1px solid #aaa;
-          padding: 6px 8px;
-        }
-        .grand-total-row td {
-          font-weight: bold;
-          font-size: 14px;
-          border-top: 2px solid #000;
-          padding: 8px;
-        }
-        .spacer { height: 10px; }
-        .summary-label { text-align: right; }
-        .summary-value { text-align: right; width: 120px; }
-        .customer-cell { vertical-align: top; line-height: 1.7; }
-      </style>
-    </head>
-    <body>
-      <h1>Invoice</h1>
+  // ── Logo HTML (matches app logoCircle) ──────────────────────────────────────
+  const logoHtml = garage?.garageLogo
+    ? `<img src="${garage.garageLogo}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;flex-shrink:0;" />`
+    : `<div style="width:60px;height:60px;border-radius:50%;background:#1D9E75;color:#fff;font-size:24px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:60px;text-align:center;">${garageName.charAt(0).toUpperCase()}</div>`;
 
-      <!-- ── Garage Header ── -->
-      <div class="top-header">
-        ${logoHtml}
-        <div class="garage-info">
-          <div class="garage-name">${garageName.toUpperCase()}</div>
-          ${garageAddress ? `<div>${garageAddress}</div>` : ""}
-          ${garagePhone ? `<div>&#9742;&nbsp;${garagePhone}</div>` : ""}
-          ${garageGst ? `<div>GST: ${garageGst}</div>` : ""}
-        </div>
+  // ── Service rows (matches app tableDataRow) ──────────────────────────────────
+  const svcRowsHtml = (invoice.services ?? [])
+    .map((s, i) => {
+      const alt = i % 2 === 1 ? "background:#F8FBFF;" : "";
+      return `<div style="display:flex;padding:7px 10px;border-bottom:1px solid #f0f0f0;${alt}">
+      <span style="flex:4;font-size:11px;color:#1a1a1a;">${s.name ?? ""}</span>
+      <span style="flex:1;font-size:11px;color:#1a1a1a;text-align:center;">1</span>
+      <span style="flex:2;font-size:11px;color:#1a1a1a;text-align:right;">&#8377;${fmt(s.price ?? s.lineTotal)}</span>
+      <span style="flex:2;font-size:11px;color:#1a1a1a;text-align:right;">&#8377;${fmt(s.lineTotal)}</span>
+    </div>`;
+    })
+    .join("");
+
+  // ── Part rows ────────────────────────────────────────────────────────────────
+  const partRowsHtml = (invoice.parts ?? [])
+    .map((p, i) => {
+      const alt = i % 2 === 1 ? "background:#F8FBFF;" : "";
+      return `<div style="display:flex;padding:7px 10px;border-bottom:1px solid #f0f0f0;${alt}">
+      <span style="flex:4;font-size:11px;color:#1a1a1a;">${p.name ?? ""}</span>
+      <span style="flex:1;font-size:11px;color:#1a1a1a;text-align:center;">${p.quantity ?? 1}</span>
+      <span style="flex:2;font-size:11px;color:#1a1a1a;text-align:right;">&#8377;${fmt(p.unitPrice)}</span>
+      <span style="flex:2;font-size:11px;color:#1a1a1a;text-align:right;">&#8377;${fmt(p.lineTotal)}</span>
+    </div>`;
+    })
+    .join("");
+
+  // ── Payment chip colors (matches app PAYMENT_STATUS_CONFIG) ──────────────────
+  const payChipColor = isPaid ? "#1D9E75" : isPartial ? "#BA7517" : "#E24B4A";
+  const payChipBg = isPaid ? "#E1F5EE" : isPartial ? "#FFFBEB" : "#FEF2F2";
+
+  // ── Watermark stamp ──────────────────────────────────────────────────────────
+  const stampColor = isPaid ? "#1D9E75" : "#E24B4A";
+  const stampText = isPaid ? "PAID" : "UNPAID";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: #F0F2F5;
+      padding: 24px;
+    }
+
+    /* ── Watermark ── */
+    .stamp {
+      position: fixed; top: 42%; right: 8%;
+      transform: rotate(-28deg);
+      font-size: 68px; font-weight: 900; letter-spacing: 6px;
+      opacity: 0.07;
+      border-width: 8px; border-style: solid; border-radius: 10px;
+      padding: 8px 20px;
+      pointer-events: none; z-index: 0;
+      color: ${stampColor}; border-color: ${stampColor};
+    }
+
+    /* ── Invoice card (matches app invoiceCard) ── */
+    .invoice-card {
+      background: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.10);
+      max-width: 720px;
+      margin: 0 auto 16px;
+    }
+
+    /* ── "INVOICE" title (matches app invoiceTitle) ── */
+    .invoice-title {
+      font-size: 18px; font-weight: 700; color: #1a1a1a;
+      text-align: center; padding: 12px; letter-spacing: 2px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    /* ── Garage header (matches app garageHeader) ── */
+    .garage-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px; border-bottom: 1px solid #e0e0e0;
+    }
+    .garage-name   { font-size: 13px; font-weight: 700; color: #1a1a1a; letter-spacing: 0.5px; text-align: right; }
+    .garage-detail { font-size: 11px; color: #555555; margin-top: 2px; text-align: right; }
+
+    /* ── Table header band (matches app tableHeaderRow — blue) ── */
+    .th-band {
+      display: flex; background: #BDD7EE;
+      padding: 7px 10px;
+      border-top: 1px solid #9DC3E6;
+      border-bottom: 1px solid #9DC3E6;
+    }
+    .th-cell {
+      font-size: 10px; font-weight: 700; color: #1a3a5c; letter-spacing: 0.5px;
+    }
+
+    /* ── Customer/Vehicle/Estimate data row ── */
+    .info-row {
+      display: flex; padding: 10px; border-bottom: 1px solid #e8e8e8;
+    }
+    .info-name   { font-size: 12px; font-weight: 600; color: #1a1a1a; margin-bottom: 2px; }
+    .info-detail { font-size: 11px; color: #555555; margin-top: 1px; }
+    .info-amount { font-size: 13px; font-weight: 700; color: #1D9E75; margin-top: 4px; }
+
+    /* ── Section subtotal row (matches app tableTotalRow) ── */
+    .subtotal-row {
+      display: flex; padding: 7px 10px;
+      border-top: 1px solid #b0b0b0; background: #F8F8F8;
+    }
+
+    /* ── Summary section (matches app summaryBody) ── */
+    .summary-body { padding: 8px 10px; }
+    .summary-row  { display: flex; justify-content: space-between; padding: 4px 0; }
+    .summary-lbl  { font-size: 11px; color: #555555; }
+    .summary-val  { font-size: 11px; color: #1a1a1a; font-weight: 500; }
+
+    /* ── Grand total row (matches app grandTotalRow) ── */
+    .grand-row {
+      display: flex; justify-content: space-between;
+      padding-top: 8px; margin-top: 4px;
+      border-top: 2px solid #1a1a1a;
+    }
+    .grand-lbl { font-size: 13px; font-weight: 700; color: #1a1a1a; }
+    .grand-val { font-size: 15px; font-weight: 800; color: #1D9E75; }
+
+    /* ── Payment chips (matches app paymentRow / paymentChip) ── */
+    .chips-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 10px; border-top: 1px solid #e0e0e0; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px; border-radius: 999px;
+      background: #F3F4F6; border: 1px solid #e5e7eb;
+      font-size: 10px; font-weight: 600; color: #555;
+    }
+
+    /* ── Notes (matches app notesBox) ── */
+    .notes-box {
+      margin: 0 10px 10px;
+      background: #FFFBEB; border-radius: 8px;
+      padding: 10px 14px; border: 1px solid #FDE68A;
+    }
+    .notes-lbl  { font-size: 10px; font-weight: 700; color: #BA7517; margin-bottom: 4px; }
+    .notes-text { font-size: 11px; color: #555555; }
+
+    /* ── Thank-you footer ── */
+    .thank-you {
+      text-align: center; padding: 14px;
+      font-size: 11px; color: #6b7280;
+      border-top: 1px solid #e0e0e0;
+    }
+    .thank-you b { color: #1D9E75; }
+  </style>
+</head>
+<body>
+
+  <div class="stamp">${stampText}</div>
+
+  <div class="invoice-card">
+
+    <!-- ── "INVOICE" title ── -->
+    <div class="invoice-title">INVOICE</div>
+
+    <!-- ── Garage header: logo left, name+details right ── -->
+    <div class="garage-header">
+      ${logoHtml}
+      <div style="text-align:right;">
+        <div class="garage-name">${garageName.toUpperCase()}</div>
+        ${garageAddr ? `<div class="garage-detail">${garageAddr}</div>` : ""}
+        ${garagePhone ? `<div class="garage-detail">&#9742; ${garagePhone}</div>` : ""}
+        ${garageGst ? `<div class="garage-detail">GST: ${garageGst}</div>` : ""}
       </div>
+    </div>
 
-      <!-- ── Customer / Vehicle / Estimate ── -->
-      <table>
-        <tr class="section-hdr">
-          <td style="width:38%">CUSTOMER</td>
-          <td style="width:30%">VEHICLE</td>
-          <td style="width:32%; text-align:right">ESTIMATE</td>
-        </tr>
-        <tr>
-          <td class="customer-cell">
-            ${customer?.fullName ?? "—"}<br>
-            ${customer?.phoneNo ?? ""}<br>
-            ${customer?.emailId ?? ""}
-          </td>
-          <td class="customer-cell">
-            ${
-              vehicle
-                ? `${vehicle.vehicleBrand ?? ""} ${vehicle.vehicleModel ?? ""}<br>${vehicle.vehicleRegisterNo ?? ""}`
-                : "—"
-            }
-          </td>
-          <td style="text-align:right; vertical-align:top">
-            ${fmtDate(invoice.createdAt)}<br>
-            Amount: &#8377;${fmt(grandTotal)}
-          </td>
-        </tr>
-      </table>
+    <!-- ── Customer / Vehicle / Estimate header band ── -->
+    <div class="th-band">
+      <span class="th-cell" style="flex:2;">CUSTOMER</span>
+      <span class="th-cell" style="flex:2;">VEHICLE</span>
+      <span class="th-cell" style="flex:2;text-align:right;">ESTIMATE</span>
+    </div>
 
-      <!-- ── Services ── -->
+    <!-- ── Customer / Vehicle / Estimate data ── -->
+    <div class="info-row">
+      <div style="flex:2;">
+        <div class="info-name">${customer?.fullName ?? "—"}</div>
+        ${customer?.phoneNo ? `<div class="info-detail">${customer.phoneNo}</div>` : ""}
+        ${customer?.emailId ? `<div class="info-detail">${customer.emailId}</div>` : ""}
+      </div>
+      <div style="flex:2;">
+        ${
+          vehicle
+            ? `<div class="info-name">${(vehicle.vehicleBrand ?? "") + " " + (vehicle.vehicleModel ?? "")}</div>
+             ${vehicle.vehicleRegisterNo ? `<div class="info-detail">${vehicle.vehicleRegisterNo}</div>` : ""}`
+            : `<div class="info-detail">—</div>`
+        }
+      </div>
+      <div style="flex:2;text-align:right;">
+        <div class="info-detail">${fmtDate(invoice.createdAt)}</div>
+        <div class="info-amount">&#8377;${fmt(invoice.totalAmount)}</div>
+      </div>
+    </div>
+
+    <!-- ── Services ── -->
+    ${
+      (invoice.services ?? []).length > 0
+        ? `
+    <div class="th-band">
+      <span class="th-cell" style="flex:4;">SERVICES</span>
+      <span class="th-cell" style="flex:1;text-align:center;">QTY</span>
+      <span class="th-cell" style="flex:2;text-align:right;">RATE</span>
+      <span class="th-cell" style="flex:2;text-align:right;">AMOUNT</span>
+    </div>
+    ${svcRowsHtml}
+    <div class="subtotal-row">
+      <span style="flex:7;font-size:11px;font-weight:700;color:#1a1a1a;text-align:right;">Total :</span>
+      <span style="flex:2;font-size:11px;font-weight:700;color:#1a1a1a;text-align:right;">&#8377;${fmt(invoice.servicesSubTotal ?? 0)}</span>
+    </div>`
+        : ""
+    }
+
+    <!-- ── Parts ── -->
+    ${
+      (invoice.parts ?? []).length > 0
+        ? `
+    <div class="th-band" style="margin-top:8px;">
+      <span class="th-cell" style="flex:4;">PARTS</span>
+      <span class="th-cell" style="flex:1;text-align:center;">QTY</span>
+      <span class="th-cell" style="flex:2;text-align:right;">RATE</span>
+      <span class="th-cell" style="flex:2;text-align:right;">AMOUNT</span>
+    </div>
+    ${partRowsHtml}
+    <div class="subtotal-row">
+      <span style="flex:7;font-size:11px;font-weight:700;color:#1a1a1a;text-align:right;">Total :</span>
+      <span style="flex:2;font-size:11px;font-weight:700;color:#1a1a1a;text-align:right;">&#8377;${fmt(invoice.partsSubTotal ?? 0)}</span>
+    </div>`
+        : ""
+    }
+
+    ${
+      (invoice.services ?? []).length === 0 &&
+      (invoice.parts ?? []).length === 0
+        ? `<div style="padding:20px;text-align:center;font-size:13px;color:#9ca3af;">No items</div>`
+        : ""
+    }
+
+    <!-- ── Summary ── -->
+    <div class="th-band" style="margin-top:8px;">
+      <span class="th-cell">SUMMARY</span>
+    </div>
+    <div class="summary-body">
+      <div class="summary-row">
+        <span class="summary-lbl">SUB TOTAL:</span>
+        <span class="summary-val">&#8377;${fmt(subTotal)}</span>
+      </div>
       ${
-        serviceRows
-          ? `<div class="spacer"></div>
-             <table>
-               <tr class="section-hdr">
-                 <td>SERVICES</td>
-                 <td style="text-align:center; width:50px">QTY</td>
-                 <td style="text-align:right; width:80px">RATE</td>
-                 <td style="text-align:right; width:90px">AMOUNT</td>
-               </tr>
-               <tbody>${serviceRows}</tbody>
-               <tr class="total-row">
-                 <td colspan="3" style="text-align:right">Total :</td>
-                 <td style="text-align:right">&#8377;${fmt(invoice.servicesSubTotal)}</td>
-               </tr>
-             </table>`
+        (invoice.labourCharge ?? 0) > 0
+          ? `
+      <div class="summary-row">
+        <span class="summary-lbl">LABOUR (${invoice.labourPercent ?? 20}%):</span>
+        <span class="summary-val">&#8377;${fmt(invoice.labourCharge)}</span>
+      </div>`
           : ""
       }
-
-      <!-- ── Parts ── -->
       ${
-        partRows
-          ? `<div class="spacer"></div>
-             <table>
-               <tr class="section-hdr">
-                 <td>PARTS</td>
-                 <td style="text-align:center; width:50px">QTY</td>
-                 <td style="text-align:right; width:80px">RATE</td>
-                 <td style="text-align:right; width:90px">AMOUNT</td>
-               </tr>
-               <tbody>${partRows}</tbody>
-               <tr class="total-row">
-                 <td colspan="3" style="text-align:right">Total :</td>
-                 <td style="text-align:right">&#8377;${fmt(invoice.partsSubTotal)}</td>
-               </tr>
-             </table>`
+        (invoice.taxAmount ?? 0) > 0
+          ? `
+      <div class="summary-row">
+        <span class="summary-lbl">TAX:</span>
+        <span class="summary-val">&#8377;${fmt(invoice.taxAmount)}</span>
+      </div>`
           : ""
       }
-
-      <!-- ── Summary ── -->
-      <div class="spacer"></div>
-      <table>
-        <tr class="section-hdr">
-          <td colspan="2">SUMMARY</td>
-        </tr>
-        <tbody>
-          <tr>
-            <td class="summary-label">SUB TOTAL:</td>
-            <td class="summary-value">&#8377;${fmt(subTotal)}</td>
-          </tr>
-          ${
-            (invoice.labourCharge ?? 0) > 0
-              ? `<tr>
-                   <td class="summary-label">LABOUR (${invoice.labourPercent ?? 20}%):</td>
-                   <td class="summary-value">&#8377;${fmt(invoice.labourCharge)}</td>
-                 </tr>`
-              : ""
-          }
-          ${
-            (invoice.taxAmount ?? 0) > 0
-              ? `<tr>
-                   <td class="summary-label">TAX:</td>
-                   <td class="summary-value">&#8377;${fmt(invoice.taxAmount)}</td>
-                 </tr>`
-              : ""
-          }
-          ${
-            (invoice.discountAmount ?? 0) > 0
-              ? `<tr>
-                   <td class="summary-label">DISCOUNT:</td>
-                   <td class="summary-value">-&#8377;${fmt(invoice.discountAmount)}</td>
-                 </tr>`
-              : ""
-          }
-        </tbody>
-        <tr class="grand-total-row">
-          <td class="summary-label">GRAND TOTAL:</td>
-          <td class="summary-value">&#8377;${fmt(grandTotal)}</td>
-        </tr>
-      </table>
-
-      <!-- ── Payment ── -->
-      <div class="spacer"></div>
-      <div style="font-size:11px; color:#555; text-align:center; margin-top:8px;">
-        Payment Mode: ${(invoice.paymentMode ?? "cash").replace("_", " ").toUpperCase()}
-        &nbsp;&nbsp;|&nbsp;&nbsp;
-        Status: ${(invoice.paymentStatus ?? "unpaid").toUpperCase()}
+      ${
+        (invoice.discountAmount ?? 0) > 0
+          ? `
+      <div class="summary-row">
+        <span class="summary-lbl">DISCOUNT:</span>
+        <span class="summary-val" style="color:#E24B4A;">-&#8377;${fmt(invoice.discountAmount)}</span>
+      </div>`
+          : ""
+      }
+      <div class="grand-row">
+        <span class="grand-lbl">GRAND TOTAL:</span>
+        <span class="grand-val">&#8377;${fmt(invoice.totalAmount)}</span>
       </div>
-      ${invoice.notes ? `<div style="margin-top:12px; font-size:11px; color:#555;"><b>Notes:</b> ${invoice.notes}</div>` : ""}
-      <div style="text-align:center; margin-top:20px; font-size:11px; color:#888;">
-        Thank you for your business!
-      </div>
-    </body>
-    </html>
-  `;
+    </div>
+
+    <!-- ── Payment chips (mode + pay status) ── -->
+    <div class="chips-row">
+      <span class="chip">${payMode}</span>
+      <span class="chip" style="background:${payChipBg};color:${payChipColor};border-color:${payChipColor};">${payStatus}</span>
+    </div>
+
+    <!-- ── Notes ── -->
+    ${
+      invoice.notes
+        ? `
+    <div class="notes-box">
+      <div class="notes-lbl">Notes</div>
+      <div class="notes-text">${invoice.notes}</div>
+    </div>`
+        : ""
+    }
+
+    <!-- ── Invoice No + Thank you ── -->
+    <div class="thank-you">
+      <b>Invoice No: ${invoice.invoiceNo ?? "—"} &nbsp;·&nbsp; Date: ${fmtDate(invoice.createdAt)}</b><br>
+      Thank you for choosing <b>${garageName}</b>!
+      ${garagePhone ? `For queries, contact us at <b>${garagePhone}</b>.` : ""}
+    </div>
+
+  </div>
+
+</body>
+</html>`;
 }
 
 // ─── Share text builder (for SMS) ────────────────────────────────────────────
@@ -1629,13 +1712,21 @@ export default function InvoiceDetailScreen() {
               INVOICE_ENDPOINTS.DETAIL(invoice._id),
               { paymentStatus: "paid", status: "paid" },
             );
-            setInvoice(
-              res.data?.data?.invoice ?? {
-                ...invoice,
-                paymentStatus: "paid",
-                status: "paid",
-              },
-            );
+            const updated = res.data?.data?.invoice;
+            if (updated) {
+              // Preserve populated refs in case backend returned raw ObjectIds
+              setInvoice({
+                ...updated,
+                customerId: updated.customerId?.fullName
+                  ? updated.customerId
+                  : invoice.customerId,
+                vehicleId: updated.vehicleId?.vehicleBrand
+                  ? updated.vehicleId
+                  : invoice.vehicleId,
+              });
+            } else {
+              setInvoice({ ...invoice, paymentStatus: "paid", status: "paid" });
+            }
           } catch (e) {
             Alert.alert(
               "Error",

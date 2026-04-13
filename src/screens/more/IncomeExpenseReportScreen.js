@@ -187,25 +187,28 @@ export default function IncomeExpenseReportScreen() {
     <SafeAreaView style={s.safe} edges={["bottom"]}>
       <TopNav title="Income & Expense" showBack transparent={false} />
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={s.tabsScroll}
-        contentContainerStyle={s.tabsContent}
-      >
-        {DATE_TABS.map((t) => (
-          <TouchableOpacity
-            key={t.key}
-            style={[s.tab, tab === t.key && s.tabActive]}
-            onPress={() => onTab(t.key)}
-            activeOpacity={0.7}
-          >
-            <Text style={[s.tabLabel, tab === t.key && s.tabLabelActive]}>
-              {t.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={s.tabsWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={s.tabsScroll}
+          contentContainerStyle={s.tabsContent}
+        >
+          {DATE_TABS.map((t) => (
+            <TouchableOpacity
+              key={t.key}
+              style={[s.tab, tab === t.key && s.tabActive]}
+              onPress={() => onTab(t.key)}
+              activeOpacity={0.7}
+            >
+              <Text style={[s.tabLabel, tab === t.key && s.tabLabelActive]}>
+                {t.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <View style={s.tabsSeparator} />
+      </View>
 
       {loading ? (
         <View style={s.center}>
@@ -379,12 +382,23 @@ export default function IncomeExpenseReportScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  tabsScroll: { flexGrow: 0 },
+  tabsWrapper: {
+    flexGrow: 0,
+    flexShrink: 0,
+    backgroundColor: COLORS.bg,
+  },
+  tabsScroll: { flexGrow: 0, flexShrink: 0 },
   tabsContent: {
     paddingHorizontal: SIZES.screenPadding,
     paddingVertical: SIZES.sm,
-    // marginBottom: 5,
     gap: SIZES.xs,
+    alignItems: "center",
+  },
+  tabsSeparator: {
+    height: 1,
+    backgroundColor: COLORS.borderLight,
+    marginHorizontal: SIZES.screenPadding,
+    marginBottom: SIZES.xs,
   },
   tab: {
     paddingHorizontal: 16,

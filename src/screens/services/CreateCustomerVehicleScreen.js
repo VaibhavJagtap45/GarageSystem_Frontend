@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,12 @@ import {
   Alert,
   Platform,
   TouchableOpacity,
+  Modal,
+  FlatList,
+  TextInput,
+  ActivityIndicator,
 } from "react-native";
+import * as Contacts from "expo-contacts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -20,8 +25,178 @@ import { addUser } from "../../api/user";
 import axiosClient from "../../api/axios";
 import { VEHICLE_ENDPOINTS } from "../../utils/constants";
 
+// ─── Contact helpers ──────────────────────────────────────────────────────────
+function normalisePhone(raw) {
+  if (!raw) return "";
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
+  if (digits.length === 11 && digits.startsWith("0")) return digits.slice(1);
+  return digits.slice(-10);
+}
+
+function pickPhone(contact) {
+  const phones = contact.phoneNumbers ?? [];
+  const mobile = phones.find((p) => /mobile|cell|phone/i.test(p.label ?? ""));
+  return normalisePhone((mobile ?? phones[0])?.number ?? "");
+}
+
+// ─── Contact row ──────────────────────────────────────────────────────────────
+function ContactRow({ contact, onSelect }) {
+  const phone = pickPhone(contact);
+  const name = contact.name || "Unknown";
+  const initials = name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w.charAt(0).toUpperCase())
+    .join("");
+
+  return (
+    <TouchableOpacity
+      style={styles.contactRow}
+      onPress={() => onSelect(contact, phone)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.contactAvatar}>
+        <Text style={styles.contactInitials}>{initials}</Text>
+      </View>
+      <View style={styles.contactInfo}>
+        <Text style={styles.contactName} numberOfLines={1}>{name}</Text>
+        <Text style={styles.contactPhone}>{phone || "No valid number"}</Text>
+      </View>
+      {phone ? (
+        <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+      ) : (
+        <Text style={styles.noPhoneBadge}>No number</Text>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+// ─── Contacts Picker Modal ────────────────────────────────────────────────────
+function ContactsModal({ visible, onClose, onSelect }) {
+  const [contacts, setContacts] = useState([]);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const loadContacts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Denied",
+          "Please allow contacts access in your phone settings to use this feature.",
+        );
+        onClose();
+        return;
+      }
+      const { data } = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
+        sort: Contacts.SortTypes.FirstName,
+      });
+      setContacts(data.filter((c) => c.phoneNumbers?.length > 0));
+    } catch {
+      Alert.alert("Error", "Could not load contacts.");
+      onClose();
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (visible) {
+      setQuery("");
+      loadContacts();
+    }
+  }, [visible]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return contacts;
+    return contacts.filter(
+      (c) =>
+        c.name?.toLowerCase().includes(q) ||
+        (c.phoneNumbers ?? []).some((p) =>
+          p.number?.replace(/\D/g, "").includes(q),
+        ),
+    );
+  }, [contacts, query]);
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <SafeAreaView style={styles.modalSafe} edges={["top", "bottom"]}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Pick a Contact</Text>
+          <TouchableOpacity
+            onPress={onClose}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="close" size={22} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.contactSearchWrap}>
+          <Ionicons
+            name="search-outline"
+            size={16}
+            color={COLORS.textMuted}
+            style={{ marginRight: SIZES.xs }}
+          />
+          <TextInput
+            style={styles.contactSearchInput}
+            placeholder="Search name or number…"
+            placeholderTextColor={COLORS.textMuted}
+            value={query}
+            onChangeText={setQuery}
+            clearButtonMode="while-editing"
+            returnKeyType="search"
+          />
+        </View>
+        {loading ? (
+          <View style={styles.modalCenter}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.modalLoadingText}>Loading contacts…</Text>
+          </View>
+        ) : filtered.length === 0 ? (
+          <View style={styles.modalCenter}>
+            <Ionicons name="people-outline" size={48} color={COLORS.borderLight} />
+            <Text style={styles.modalEmptyText}>
+              {query
+                ? "No contacts match your search"
+                : "No contacts with phone numbers"}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filtered}
+            keyExtractor={(item) => item.id ?? item.name}
+            renderItem={({ item }) => (
+              <ContactRow
+                contact={item}
+                onSelect={(c, phone) => {
+                  onSelect(c, phone);
+                  onClose();
+                }}
+              />
+            )}
+            ItemSeparatorComponent={() => (
+              <View style={styles.contactSeparator} />
+            )}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 32 }}
+          />
+        )}
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
 // ─── Section Card ─────────────────────────────────────────────────────────────
-function SectionCard({ title, icon, subtitle, children }) {
+function SectionCard({ title, icon, subtitle, rightElement, children }) {
   return (
     <View style={styles.sectionCard}>
       <View style={styles.sectionHeader}>
@@ -34,6 +209,7 @@ function SectionCard({ title, icon, subtitle, children }) {
             <Text style={styles.sectionSubtitle}>{subtitle}</Text>
           ) : null}
         </View>
+        {rightElement ?? null}
       </View>
       <View style={styles.sectionBody}>{children}</View>
     </View>
@@ -97,12 +273,22 @@ function StepIndicator({ currentStep }) {
 }
 
 // ─── Step 1: Customer Details ─────────────────────────────────────────────────
-function CustomerStep({ form, setField, errors }) {
+function CustomerStep({ form, setField, errors, onPickContact }) {
   return (
     <SectionCard
       title="Customer Details"
       icon="person-outline"
       subtitle="Required to create the customer account"
+      rightElement={
+        <TouchableOpacity
+          style={styles.contactsBtn}
+          onPress={onPickContact}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="people-outline" size={14} color={COLORS.primary} />
+          <Text style={styles.contactsBtnText}>From Contacts</Text>
+        </TouchableOpacity>
+      }
     >
       <RowFields>
         <RowField>
@@ -396,6 +582,24 @@ export default function CreateCustomerVehicleScreen() {
   const [form, setForm] = useState(FORM_INIT);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
+
+  const handleContactSelected = useCallback((contact, phone) => {
+    const parts = (contact.name || "").trim().split(" ");
+    const firstName = parts[0] || "";
+    const lastName = parts.slice(1).join(" ") || "";
+    setForm((p) => ({
+      ...p,
+      ...(firstName && { firstName }),
+      ...(lastName && { lastName }),
+      ...(phone && { phone }),
+    }));
+    setErrors((e) => ({
+      ...e,
+      ...(firstName && { firstName: null }),
+      ...(phone && { phone: null }),
+    }));
+  }, []);
 
   // Vehicle meta
   const [brandOptions, setBrandOptions] = useState([]);
@@ -548,7 +752,12 @@ export default function CreateCustomerVehicleScreen() {
         showsVerticalScrollIndicator={false}
       >
         {step === 1 && (
-          <CustomerStep form={form} setField={setField} errors={errors} />
+          <CustomerStep
+            form={form}
+            setField={setField}
+            errors={errors}
+            onPickContact={() => setShowContacts(true)}
+          />
         )}
         {step === 2 && (
           <VehicleStep
@@ -603,6 +812,11 @@ export default function CreateCustomerVehicleScreen() {
           </View>
         </View>
       </View>
+      <ContactsModal
+        visible={showContacts}
+        onClose={() => setShowContacts(false)}
+        onSelect={handleContactSelected}
+      />
     </SafeAreaView>
   );
 }
@@ -774,5 +988,127 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.medium,
     fontSize: SIZES.textSm,
     color: COLORS.textPrimary,
+  },
+
+  // "From Contacts" button
+  contactsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: SIZES.radiusFull,
+    paddingHorizontal: SIZES.sm + 2,
+    paddingVertical: 5,
+    backgroundColor: COLORS.primaryLight,
+  },
+  contactsBtnText: {
+    fontFamily: FONTS.medium,
+    fontSize: SIZES.textXs,
+    color: COLORS.primary,
+  },
+
+  // Contacts modal
+  modalSafe: { flex: 1, backgroundColor: COLORS.bg },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: SIZES.screenPadding,
+    paddingVertical: SIZES.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+    backgroundColor: COLORS.bgCard,
+  },
+  modalTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textLg,
+    color: COLORS.textPrimary,
+  },
+  contactSearchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    margin: SIZES.screenPadding,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    paddingHorizontal: SIZES.sm,
+    ...SHADOWS.sm,
+  },
+  contactSearchInput: {
+    flex: 1,
+    height: 42,
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textSm,
+    color: COLORS.textPrimary,
+  },
+  contactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: SIZES.screenPadding,
+    paddingVertical: SIZES.sm + 2,
+    gap: SIZES.sm,
+    backgroundColor: COLORS.bgCard,
+  },
+  contactAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: COLORS.primaryLight,
+    borderWidth: 1,
+    borderColor: COLORS.primary + "30",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  contactInitials: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textBase,
+    color: COLORS.primary,
+  },
+  contactInfo: { flex: 1 },
+  contactName: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textBase,
+    color: COLORS.textPrimary,
+  },
+  contactPhone: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textSm,
+    color: COLORS.textMuted,
+    marginTop: 1,
+  },
+  noPhoneBadge: {
+    fontFamily: FONTS.medium,
+    fontSize: SIZES.textXs,
+    color: COLORS.error,
+    backgroundColor: COLORS.errorLight,
+    borderRadius: SIZES.radiusFull,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  contactSeparator: {
+    height: 1,
+    backgroundColor: COLORS.borderLight,
+    marginLeft: SIZES.screenPadding + 42 + SIZES.sm,
+  },
+  modalCenter: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: SIZES.md,
+    paddingHorizontal: SIZES.xl,
+  },
+  modalLoadingText: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textSm,
+    color: COLORS.textMuted,
+  },
+  modalEmptyText: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textBase,
+    color: COLORS.textMuted,
+    textAlign: "center",
+    lineHeight: 22,
   },
 });

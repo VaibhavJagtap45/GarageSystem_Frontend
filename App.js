@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { View, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -14,11 +14,16 @@ import {
 } from "@expo-google-fonts/inter";
 import * as SplashScreen from "expo-splash-screen";
 import Toast from "react-native-toast-message";
-import { Provider, useDispatch } from "react-redux";
+import { Provider, useDispatch, useSelector } from "react-redux";
 import store from "./src/store";
 import { restoreSession } from "./src/store/slices/authSlice";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { COLORS } from "./src/utils/constants";
+import { PreferencesProvider } from "./src/context/PreferencesContext";
+import {
+  initPushNotifications,
+  addNotificationListeners,
+} from "./src/utils/notifications";
 
 // ─── Toast Styles ─────────────────────────────────────────────────────────────
 const toastCardStyle = {
@@ -83,12 +88,45 @@ SplashScreen.preventAutoHideAsync();
 // ─── Inner App ─────────────────────────────────────────────────────────────────
 // Must live inside <Provider> to use Redux hooks.
 function AppContent() {
-  const dispatch = useDispatch();
+  const dispatch        = useDispatch();
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const tokenRegistered = useRef(false); // guard: only register once per session
 
+  // Restore persisted session from AsyncStorage on boot
   useEffect(() => {
-    // Restores token/user/garage from AsyncStorage into Redux on boot
     dispatch(restoreSession());
   }, [dispatch]);
+
+  // Register for push notifications once the user is authenticated.
+  // The ref guard prevents re-registering on every re-render.
+  useEffect(() => {
+    if (isAuthenticated && !tokenRegistered.current) {
+      tokenRegistered.current = true;
+      initPushNotifications();
+    }
+    // Reset guard on logout so the next login re-registers
+    if (!isAuthenticated) {
+      tokenRegistered.current = false;
+    }
+  }, [isAuthenticated]);
+
+  // Set up foreground notification listeners for the app's lifetime
+  useEffect(() => {
+    const cleanup = addNotificationListeners({
+      // Notification arrives while app is in foreground — show Toast
+      onNotification: (notification) => {
+        const { title, body } = notification.request.content;
+        Toast.show({ type: "info", text1: title ?? "", text2: body ?? "" });
+      },
+      // User tapped a notification — data.type can drive navigation here
+      onNotificationResponse: (response) => {
+        const data = response.notification.request.content.data ?? {};
+        // Navigation logic can be added here when a navigation ref is wired up
+        console.log("[Push] Tapped notification:", data.type, data);
+      },
+    });
+    return cleanup; // removes listeners when AppContent unmounts
+  }, []);
 
   return <AppNavigator />;
 }
@@ -114,13 +152,15 @@ export default function App() {
 
   return (
     <Provider store={store}>
-      <GestureHandlerRootView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-        <SafeAreaProvider>
-          <StatusBar style="dark" backgroundColor={COLORS.bg} />
-          <AppContent />
-          <Toast config={toastConfig} position="top" topOffset={60} />
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
+      <PreferencesProvider>
+        <GestureHandlerRootView style={{ flex: 1, backgroundColor: COLORS.bg }}>
+          <SafeAreaProvider>
+            <StatusBar style="dark" backgroundColor={COLORS.bg} />
+            <AppContent />
+            <Toast config={toastConfig} position="top" topOffset={60} />
+          </SafeAreaProvider>
+        </GestureHandlerRootView>
+      </PreferencesProvider>
     </Provider>
   );
 }

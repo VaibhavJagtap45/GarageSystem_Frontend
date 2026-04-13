@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -16,10 +16,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import * as Contacts from "expo-contacts";
-import { COLORS, FONTS, SIZES, SHADOWS } from "../../utils/constants";
+import { COLORS, FONTS, SIZES, SHADOWS, VEHICLE_ENDPOINTS } from "../../utils/constants";
 import TopNav from "../../components/ui/TopNav";
 import AppInput from "../../components/ui/AppInput";
 import AppButton from "../../components/ui/AppButton";
+import AppSelect from "../../components/ui/AppSelect";
+import axiosClient from "../../api/axios";
 import { addUser } from "../../api/user";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -223,6 +225,7 @@ export default function AddCustomerScreen() {
   const navigation   = useNavigation();
   const tabBarHeight = useBottomTabBarHeight();
 
+  // ── Customer fields ───────────────────────────────────────────────
   const [fullName, setFullName] = useState("");
   const [phoneNo,  setPhoneNo]  = useState("");
   const [email,    setEmail]    = useState("");
@@ -230,6 +233,46 @@ export default function AddCustomerScreen() {
   const [errors,   setErrors]   = useState({});
   const [loading,  setLoading]  = useState(false);
   const [showContacts, setShowContacts] = useState(false);
+
+  // ── Vehicle fields (optional) ─────────────────────────────────────
+  const [includeVehicle,    setIncludeVehicle]    = useState(false);
+  const [vehicleBrand,      setVehicleBrand]      = useState(null);
+  const [vehicleModel,      setVehicleModel]      = useState(null);
+  const [vehicleRegisterNo, setVehicleRegisterNo] = useState("");
+  const [vehicleVariant,    setVehicleVariant]    = useState("");
+  const [brandOptions,      setBrandOptions]      = useState([]);
+  const [modelOptions,      setModelOptions]      = useState([]);
+  const [brandsLoading,     setBrandsLoading]     = useState(false);
+  const [modelsLoading,     setModelsLoading]     = useState(false);
+
+  // Load brands once on mount
+  useEffect(() => {
+    setBrandsLoading(true);
+    axiosClient
+      .get(VEHICLE_ENDPOINTS.BRANDS)
+      .then((r) =>
+        setBrandOptions(
+          (r.data?.data?.brands ?? []).map((b) => ({ value: b, label: b })),
+        ),
+      )
+      .catch(() => setBrandOptions([]))
+      .finally(() => setBrandsLoading(false));
+  }, []);
+
+  // Reload models whenever brand changes
+  useEffect(() => {
+    if (!vehicleBrand) { setModelOptions([]); return; }
+    setModelsLoading(true);
+    axiosClient
+      .get(VEHICLE_ENDPOINTS.MODELS, { params: { brand: vehicleBrand } })
+      .then((r) =>
+        setModelOptions(
+          (r.data?.data?.models ?? []).map((m) => ({ value: m, label: m })),
+        ),
+      )
+      .catch(() => setModelOptions([]))
+      .finally(() => setModelsLoading(false));
+  }, [vehicleBrand]);
 
   const handleContactSelected = (contact, phone) => {
     if (contact.name) {
@@ -248,6 +291,11 @@ export default function AddCustomerScreen() {
     if (!phoneNo.trim()) e.phoneNo = "Phone number is required";
     else if (!/^[6-9]\d{9}$/.test(phoneNo.trim()))
       e.phoneNo = "Enter a valid 10-digit Indian mobile number";
+    if (includeVehicle) {
+      if (!vehicleBrand)              e.vehicleBrand      = "Brand is required";
+      if (!vehicleModel)              e.vehicleModel      = "Model is required";
+      if (!vehicleRegisterNo.trim())  e.vehicleRegisterNo = "Registration number is required";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -259,13 +307,24 @@ export default function AddCustomerScreen() {
       await addUser({
         fullName: fullName.trim(),
         phoneNo:  phoneNo.trim(),
-        role: "customer",
+        role:     "customer",
         ...(email.trim()   && { emailId: email.trim() }),
         ...(address.trim() && { address: address.trim() }),
+        // Vehicle fields — only sent when owner opts in
+        ...(includeVehicle && {
+          vehicleBrand,
+          vehicleModel,
+          vehicleRegisterNo: vehicleRegisterNo.trim().toUpperCase(),
+          ...(vehicleVariant.trim() && { vehicleVariant: vehicleVariant.trim() }),
+        }),
       });
-      Alert.alert("Customer Created", `${fullName.trim()} has been saved.`, [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert(
+        "Customer Created",
+        includeVehicle
+          ? `${fullName.trim()} and their vehicle have been saved.`
+          : `${fullName.trim()} has been saved.`,
+        [{ text: "OK", onPress: () => navigation.goBack() }],
+      );
     } catch (err) {
       Alert.alert("Error", err.displayMessage || "Failed to create customer.");
     } finally {
@@ -341,11 +400,126 @@ export default function AddCustomerScreen() {
           />
         </SectionCard>
 
+        {/* ── Vehicle Section ── */}
+        <SectionCard
+          title="Vehicle Details"
+          icon="car-outline"
+          rightElement={
+            <TouchableOpacity
+              style={[
+                styles.toggleBtn,
+                includeVehicle && styles.toggleBtnActive,
+              ]}
+              onPress={() => {
+                setIncludeVehicle((v) => !v);
+                // Reset vehicle fields when toggling off
+                if (includeVehicle) {
+                  setVehicleBrand(null);
+                  setVehicleModel(null);
+                  setVehicleRegisterNo("");
+                  setVehicleVariant("");
+                  setErrors((e) => ({
+                    ...e,
+                    vehicleBrand: null,
+                    vehicleModel: null,
+                    vehicleRegisterNo: null,
+                  }));
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={includeVehicle ? "checkmark-circle" : "add-circle-outline"}
+                size={14}
+                color={includeVehicle ? COLORS.white : COLORS.primary}
+              />
+              <Text
+                style={[
+                  styles.toggleBtnText,
+                  includeVehicle && styles.toggleBtnTextActive,
+                ]}
+              >
+                {includeVehicle ? "Added" : "Add Vehicle"}
+              </Text>
+            </TouchableOpacity>
+          }
+        >
+          {includeVehicle ? (
+            <>
+              <View style={styles.rowFields}>
+                <View style={styles.rowField}>
+                  <AppSelect
+                    label="Brand *"
+                    icon="car-outline"
+                    placeholder={brandsLoading ? "Loading…" : "Select brand"}
+                    options={brandOptions}
+                    value={vehicleBrand}
+                    onChange={(val) => {
+                      setVehicleBrand(val);
+                      setVehicleModel(null);
+                      setErrors((e) => ({ ...e, vehicleBrand: null, vehicleModel: null }));
+                    }}
+                    error={errors.vehicleBrand}
+                  />
+                </View>
+                <View style={styles.rowField}>
+                  <AppSelect
+                    label="Model *"
+                    icon="git-branch-outline"
+                    placeholder={
+                      !vehicleBrand
+                        ? "Select brand first"
+                        : modelsLoading
+                          ? "Loading…"
+                          : "Select model"
+                    }
+                    options={modelOptions}
+                    value={vehicleModel}
+                    onChange={(val) => {
+                      setVehicleModel(val);
+                      setErrors((e) => ({ ...e, vehicleModel: null }));
+                    }}
+                    disabled={!vehicleBrand}
+                    error={errors.vehicleModel}
+                  />
+                </View>
+              </View>
+
+              <AppInput
+                label="Registration Number *"
+                icon="id-card-outline"
+                placeholder="MH12AB1234"
+                value={vehicleRegisterNo}
+                onChangeText={(v) => {
+                  setVehicleRegisterNo(v);
+                  setErrors((e) => ({ ...e, vehicleRegisterNo: null }));
+                }}
+                autoCapitalize="characters"
+                error={errors.vehicleRegisterNo}
+              />
+
+              <AppInput
+                label="Variant / Trim"
+                icon="layers-outline"
+                placeholder="e.g. Disc, CBS, V3 (optional)"
+                value={vehicleVariant}
+                onChangeText={setVehicleVariant}
+              />
+            </>
+          ) : (
+            <View style={styles.vehicleEmptyHint}>
+              <Ionicons name="car-outline" size={22} color={COLORS.textMuted} />
+              <Text style={styles.vehicleEmptyText}>
+                Tap "Add Vehicle" to include a vehicle with this customer.
+              </Text>
+            </View>
+          )}
+        </SectionCard>
+
         <View style={styles.noteCard}>
           <Ionicons name="information-circle-outline" size={16} color={COLORS.primary} />
           <Text style={styles.noteText}>
             Tap "From Contacts" to auto-fill name and number from your phone.
-            You can add vehicles from the customer profile after creation.
           </Text>
         </View>
       </ScrollView>
@@ -429,6 +603,38 @@ const styles = StyleSheet.create({
   noteText: {
     flex: 1, fontFamily: FONTS.regular, fontSize: SIZES.textSm,
     color: COLORS.primary, lineHeight: 20,
+  },
+
+  // Vehicle section
+  rowFields:       { flexDirection: "row", gap: SIZES.sm },
+  rowField:        { flex: 1 },
+  vehicleEmptyHint: {
+    flexDirection: "row", alignItems: "center", gap: SIZES.sm,
+    paddingVertical: SIZES.sm,
+  },
+  vehicleEmptyText: {
+    flex: 1,
+    fontFamily: FONTS.regular, fontSize: SIZES.textSm,
+    color: COLORS.textMuted, lineHeight: 20,
+  },
+
+  // Toggle button (Add Vehicle / Added)
+  toggleBtn: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    borderWidth: 1, borderColor: COLORS.primary,
+    borderRadius: SIZES.radiusFull,
+    paddingHorizontal: SIZES.sm + 2, paddingVertical: 5,
+    backgroundColor: COLORS.primaryLight,
+  },
+  toggleBtnActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  toggleBtnText: {
+    fontFamily: FONTS.medium, fontSize: SIZES.textXs, color: COLORS.primary,
+  },
+  toggleBtnTextActive: {
+    color: COLORS.white,
   },
 
   // Footer

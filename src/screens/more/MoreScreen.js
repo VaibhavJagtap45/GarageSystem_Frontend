@@ -53,30 +53,30 @@ const MENU_GROUPS = [
       },
     ],
   },
-  {
-    groupId: "reminders",
-    label: "Reminders & Feedback",
-    items: [
-      {
-        id: "service_reminders",
-        label: "Service Reminders",
-        icon: "notifications-outline",
-        onPress: (nav) => nav.navigate("ServiceReminders"),
-      },
-      {
-        id: "service_feedbacks",
-        label: "Service Feedbacks",
-        icon: "star-outline",
-        onPress: (nav) => nav.navigate("ServiceFeedbacks"),
-      },
-      {
-        id: "insurance_due",
-        label: "Insurance Due",
-        icon: "alarm-outline",
-        onPress: (nav) => nav.navigate("InsuranceDue"),
-      },
-    ],
-  },
+  // {
+  //   groupId: "reminders",
+  //   label: "Reminders & Feedback",
+  //   items: [
+  //     {
+  //       id: "service_reminders",
+  //       label: "Service Reminders",
+  //       icon: "notifications-outline",
+  //       onPress: (nav) => nav.navigate("ServiceReminders"),
+  //     },
+  //     {
+  //       id: "service_feedbacks",
+  //       label: "Service Feedbacks",
+  //       icon: "star-outline",
+  //       onPress: (nav) => nav.navigate("ServiceFeedbacks"),
+  //     },
+  //     {
+  //       id: "insurance_due",
+  //       label: "Insurance Due",
+  //       icon: "alarm-outline",
+  //       onPress: (nav) => nav.navigate("InsuranceDue"),
+  //     },
+  //   ],
+  // },
   {
     groupId: "reports",
     label: "Reports & Export",
@@ -86,6 +86,12 @@ const MENU_GROUPS = [
         label: "Reports",
         icon: "bar-chart-outline",
         onPress: (nav) => nav.navigate("Reports"),
+      },
+      {
+        id: "invoices",
+        label: "Invoices",
+        icon: "receipt-outline",
+        onPress: (nav) => nav.navigate("InvoiceList"),
       },
       {
         id: "tally_export",
@@ -111,15 +117,15 @@ const MENU_GROUPS = [
         icon: "settings-outline",
         onPress: (nav) => nav.navigate("Settings"),
       },
-      {
-        id: "refer",
-        label: "Refer a Friend",
-        icon: "share-social-outline",
-        onPress: () => {
-          const { Share } = require("react-native");
-          Share.share({ message: "Check out ApnoGarage — the best garage management app! Download now." });
-        },
-      },
+      // {
+      //   id: "refer",
+      //   label: "Refer a Friend",
+      //   icon: "share-social-outline",
+      //   onPress: () => {
+      //     const { Share } = require("react-native");
+      //     Share.share({ message: "Check out ApnoGarage — the best garage management app! Download now." });
+      //   },
+      // },
     ],
   },
   {

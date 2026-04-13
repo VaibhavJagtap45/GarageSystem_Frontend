@@ -1,7 +1,11 @@
 import { useState, useCallback } from "react";
 import {
-  View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -42,13 +46,18 @@ function QuickAction({ label, icon, color, bg, onPress }) {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function CustomerHome({ navigation }) {
-  const { user }   = useSelector((s) => s.auth);
-  const doLogout   = useLogout();
-  const tabBarH    = useBottomTabBarHeight();
+  const { user } = useSelector((s) => s.auth);
+  const doLogout = useLogout();
+  const tabBarH = useBottomTabBarHeight();
 
-  const [garage,  setGarage]  = useState(null);
-  const [summary, setSummary] = useState({ total: 0, active: 0, completed: 0, totalSpent: 0 });
-  const [recent,  setRecent]  = useState([]);
+  const [garage, setGarage] = useState(null);
+  const [summary, setSummary] = useState({
+    total: 0,
+    active: 0,
+    completed: 0,
+    totalSpent: 0,
+  });
+  const [recent, setRecent] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -70,21 +79,67 @@ export default function CustomerHome({ navigation }) {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const firstName = user?.fullName?.split(" ")[0] || "Customer";
 
   const STATS = [
-    { label: "Total Orders", value: summary?.total,     icon: "car-outline",             color: "#3b82f6", bg: "#dbeafe" },
-    { label: "Active",       value: summary?.active,    icon: "construct-outline",        color: "#f59e0b", bg: "#fef3c7" },
-    { label: "Completed",    value: summary?.completed, icon: "checkmark-circle-outline", color: "#22c55e", bg: "#dcfce7" },
+    {
+      label: "Total Orders",
+      value: summary?.total,
+      icon: "car-outline",
+      color: "#3b82f6",
+      bg: "#dbeafe",
+    },
+    {
+      label: "Active",
+      value: summary?.active,
+      icon: "construct-outline",
+      color: "#f59e0b",
+      bg: "#fef3c7",
+    },
+    {
+      label: "Completed",
+      value: summary?.completed,
+      icon: "checkmark-circle-outline",
+      color: "#22c55e",
+      bg: "#dcfce7",
+    },
   ];
 
   const ACTIONS = [
-    { label: "Services",  icon: "construct-outline", color: "#3b82f6", bg: "#dbeafe", nav: "Services"  },
-    { label: "My Orders", icon: "car-outline",        color: "#f59e0b", bg: "#fef3c7", nav: "Orders"    },
-    { label: "Invoices",  icon: "receipt-outline",   color: "#22c55e", bg: "#dcfce7", nav: "Invoices"  },
-    { label: "Profile",   icon: "person-outline",    color: "#8b5cf6", bg: "#ede9fe", nav: "Profile"   },
+    {
+      label: "Services",
+      icon: "construct-outline",
+      color: "#3b82f6",
+      bg: "#dbeafe",
+      nav: "Services",
+    },
+    {
+      label: "My Orders",
+      icon: "car-outline",
+      color: "#f59e0b",
+      bg: "#fef3c7",
+      nav: "Orders",
+    },
+    {
+      label: "Invoices",
+      icon: "receipt-outline",
+      color: "#22c55e",
+      bg: "#dcfce7",
+      nav: "Invoices",
+    },
+    {
+      label: "Profile",
+      icon: "person-outline",
+      color: "#8b5cf6",
+      bg: "#ede9fe",
+      nav: "Profile",
+    },
   ];
 
   return (
@@ -105,8 +160,16 @@ export default function CustomerHome({ navigation }) {
               <Text style={s.heroGreet}>Hello, {firstName} 👋</Text>
               <Text style={s.heroSub}>Welcome to your garage portal</Text>
             </View>
-            <TouchableOpacity style={s.logoutBtn} onPress={doLogout} activeOpacity={0.8}>
-              <Ionicons name="log-out-outline" size={20} color="rgba(255,255,255,0.9)" />
+            <TouchableOpacity
+              style={s.logoutBtn}
+              onPress={doLogout}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="log-out-outline"
+                size={20}
+                color="rgba(255,255,255,0.9)"
+              />
             </TouchableOpacity>
           </View>
 
@@ -120,7 +183,9 @@ export default function CustomerHome({ navigation }) {
             {garage?.garageName ? (
               <View style={s.garagePill}>
                 <Ionicons name="business-outline" size={11} color="#3b82f6" />
-                <Text style={s.garagePillTxt} numberOfLines={1}>{garage.garageName}</Text>
+                <Text style={s.garagePillTxt} numberOfLines={1}>
+                  {garage.garageName}
+                </Text>
               </View>
             ) : null}
           </View>
@@ -134,7 +199,9 @@ export default function CustomerHome({ navigation }) {
             <View style={s.section}>
               <Text style={s.sectionTitle}>Overview</Text>
               <View style={s.statsGrid}>
-                {STATS.map((st) => <StatCard key={st.label} {...st} />)}
+                {STATS.map((st) => (
+                  <StatCard key={st.label} {...st} />
+                ))}
               </View>
             </View>
 
@@ -158,7 +225,11 @@ export default function CustomerHome({ navigation }) {
                 <Text style={s.sectionTitle}>Your Garage</Text>
                 <View style={s.garageCard}>
                   <View style={s.garageIconWrap}>
-                    <Ionicons name="business-outline" size={20} color="#3b82f6" />
+                    <Ionicons
+                      name="business-outline"
+                      size={20}
+                      color="#3b82f6"
+                    />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={s.garageName}>{garage.garageName}</Text>
@@ -167,8 +238,14 @@ export default function CustomerHome({ navigation }) {
                     ) : null}
                     {garage.garageContactNumber ? (
                       <View style={s.garageRow}>
-                        <Ionicons name="call-outline" size={12} color={COLORS.textMuted} />
-                        <Text style={s.garagePhone}>{garage.garageContactNumber}</Text>
+                        <Ionicons
+                          name="call-outline"
+                          size={12}
+                          color={COLORS.textMuted}
+                        />
+                        <Text style={s.garagePhone}>
+                          {garage.garageContactNumber}
+                        </Text>
                       </View>
                     ) : null}
                   </View>
@@ -186,40 +263,63 @@ export default function CustomerHome({ navigation }) {
               </View>
               {recent.length === 0 ? (
                 <View style={s.emptyBox}>
-                  <Ionicons name="car-outline" size={32} color={COLORS.textMuted} />
+                  <Ionicons
+                    name="car-outline"
+                    size={32}
+                    color={COLORS.textMuted}
+                  />
                   <Text style={s.emptyTxt}>No orders yet — book a service</Text>
                 </View>
               ) : (
                 recent.map((o) => {
                   const accent =
-                    o.status === "completed" ? "#22c55e" :
-                    o.status === "in_progress" ? "#6366f1" :
-                    o.status === "vehicle_ready" ? "#0ea5e9" : "#f59e0b";
+                    o.status === "completed"
+                      ? "#22c55e"
+                      : o.status === "in_progress"
+                        ? "#6366f1"
+                        : o.status === "vehicle_ready"
+                          ? "#0ea5e9"
+                          : "#f59e0b";
                   return (
                     <TouchableOpacity
                       key={o._id}
                       style={[s.orderCard, { borderLeftColor: accent }]}
                       activeOpacity={0.8}
-                      onPress={() => navigation.navigate("Orders", {
-                        screen: "COrderDetail",
-                        params: { orderId: o._id },
-                      })}
+                      onPress={() =>
+                        navigation.navigate("Orders", {
+                          screen: "COrderDetail",
+                          params: { orderId: o._id },
+                        })
+                      }
                     >
                       <View style={{ flex: 1, gap: 3 }}>
                         <Text style={s.orderNo}>{o.orderNo || "Order"}</Text>
                         <View style={s.orderRow}>
-                          <Ionicons name="car-outline" size={12} color={COLORS.textMuted} />
+                          <Ionicons
+                            name="car-outline"
+                            size={12}
+                            color={COLORS.textMuted}
+                          />
                           <Text style={s.orderVeh}>
-                            {o.vehicleId?.vehicleBrand} {o.vehicleId?.vehicleModel}
-                            {o.vehicleId?.vehicleRegisterNo ? `  ·  ${o.vehicleId.vehicleRegisterNo}` : ""}
+                            {o.vehicleId?.vehicleBrand}{" "}
+                            {o.vehicleId?.vehicleModel}
+                            {o.vehicleId?.vehicleRegisterNo
+                              ? `  ·  ${o.vehicleId.vehicleRegisterNo}`
+                              : ""}
                           </Text>
                         </View>
                         <Text style={s.orderDate}>{fmtDate(o.createdAt)}</Text>
                       </View>
                       <View style={{ alignItems: "flex-end", gap: 6 }}>
                         <Badge status={o.status} />
-                        {o.totalAmount > 0 && <Text style={s.orderAmt}>{inr(o.totalAmount)}</Text>}
-                        <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+                        {o.totalAmount > 0 && (
+                          <Text style={s.orderAmt}>{inr(o.totalAmount)}</Text>
+                        )}
+                        <Ionicons
+                          name="chevron-forward"
+                          size={14}
+                          color={COLORS.textMuted}
+                        />
                       </View>
                     </TouchableOpacity>
                   );
@@ -244,37 +344,87 @@ const s = StyleSheet.create({
     paddingBottom: SIZES.xxl + 8,
     gap: SIZES.lg,
   },
-  heroRow:   { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  heroGreet: { fontFamily: FONTS.extrabold, fontSize: SIZES.textXl, color: COLORS.white },
-  heroSub:   { fontFamily: FONTS.regular, fontSize: SIZES.textSm, color: "rgba(255,255,255,0.8)", marginTop: 2 },
+  heroRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  heroGreet: {
+    fontFamily: FONTS.extrabold,
+    fontSize: SIZES.textXl,
+    color: COLORS.white,
+  },
+  heroSub: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textSm,
+    color: "rgba(255,255,255,0.8)",
+    marginTop: 2,
+  },
   logoutBtn: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: "rgba(255,255,255,0.15)",
-    alignItems: "center", justifyContent: "center",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // Spent pill (inside hero)
   spentPill: {
-    flexDirection: "row", alignItems: "center", gap: SIZES.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SIZES.sm,
     backgroundColor: COLORS.white,
     borderRadius: SIZES.radiusMd,
     padding: SIZES.md,
     ...SHADOWS.sm,
   },
-  spentLbl: { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted },
-  spentAmt: { fontFamily: FONTS.extrabold, fontSize: SIZES.textLg, color: "#3b82f6" },
-  garagePill: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: "#dbeafe", borderRadius: SIZES.radiusFull,
-    paddingHorizontal: 10, paddingVertical: 4, maxWidth: 120,
+  spentLbl: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
   },
-  garagePillTxt: { fontFamily: FONTS.semibold, fontSize: SIZES.textXs, color: "#3b82f6", flexShrink: 1 },
+  spentAmt: {
+    fontFamily: FONTS.extrabold,
+    fontSize: SIZES.textLg,
+    color: "#3b82f6",
+  },
+  garagePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#dbeafe",
+    borderRadius: SIZES.radiusFull,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    maxWidth: 120,
+  },
+  garagePillTxt: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textXs,
+    color: "#3b82f6",
+    flexShrink: 1,
+  },
 
   // Sections
-  section:      { marginHorizontal: SIZES.screenPadding, marginTop: SIZES.lg },
-  sectionTitle: { fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: COLORS.textPrimary, marginBottom: SIZES.sm },
-  sectionRow:   { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: SIZES.sm },
-  seeAll:       { fontFamily: FONTS.medium, fontSize: SIZES.textSm, color: "#3b82f6" },
+  section: { marginHorizontal: SIZES.screenPadding, marginTop: SIZES.lg },
+  sectionTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textBase,
+    color: COLORS.textPrimary,
+    marginBottom: SIZES.sm,
+  },
+  sectionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SIZES.sm,
+  },
+  seeAll: {
+    fontFamily: FONTS.medium,
+    fontSize: SIZES.textSm,
+    color: "#3b82f6",
+  },
 
   // Stats
   statsGrid: { flexDirection: "row", gap: SIZES.sm },
@@ -284,54 +434,137 @@ const s = StyleSheet.create({
     borderRadius: SIZES.radiusMd,
     padding: SIZES.md,
     gap: 4,
-    borderWidth: 1, borderColor: COLORS.borderLight, borderLeftWidth: 4,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    borderLeftWidth: 4,
     ...SHADOWS.sm,
   },
-  statIcon: { width: 34, height: 34, borderRadius: SIZES.radiusSm, alignItems: "center", justifyContent: "center", marginBottom: 4 },
-  statVal:  { fontFamily: FONTS.extrabold, fontSize: SIZES.textXl, color: COLORS.textPrimary },
-  statLbl:  { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted },
+  statIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: SIZES.radiusSm,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  statVal: {
+    fontFamily: FONTS.extrabold,
+    fontSize: SIZES.textXl,
+    color: COLORS.textPrimary,
+  },
+  statLbl: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+  },
 
   // Quick actions
   quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: SIZES.sm },
   quickCard: {
     width: "47.5%",
-    backgroundColor: COLORS.bgCard, borderRadius: SIZES.radiusMd,
-    padding: SIZES.md, alignItems: "center", gap: SIZES.sm,
-    borderWidth: 1, borderColor: COLORS.borderLight,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusMd,
+    padding: SIZES.md,
+    alignItems: "center",
+    gap: SIZES.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
     ...SHADOWS.sm,
   },
-  quickIcon:  { width: 52, height: 52, borderRadius: SIZES.radiusMd, alignItems: "center", justifyContent: "center" },
-  quickLabel: { fontFamily: FONTS.semibold, fontSize: SIZES.textSm, color: COLORS.textPrimary },
+  quickIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: SIZES.radiusMd,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickLabel: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textSm,
+    color: COLORS.textPrimary,
+  },
 
   // Garage card
   garageCard: {
-    flexDirection: "row", alignItems: "flex-start", gap: SIZES.sm,
-    backgroundColor: COLORS.bgCard, borderRadius: SIZES.radiusMd,
-    padding: SIZES.md, borderWidth: 1, borderColor: "#dbeafe",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: SIZES.sm,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusMd,
+    padding: SIZES.md,
+    borderWidth: 1,
+    borderColor: "#dbeafe",
     ...SHADOWS.sm,
   },
   garageIconWrap: {
-    width: 40, height: 40, borderRadius: SIZES.radiusSm,
-    backgroundColor: "#dbeafe", alignItems: "center", justifyContent: "center",
+    width: 40,
+    height: 40,
+    borderRadius: SIZES.radiusSm,
+    backgroundColor: "#dbeafe",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  garageName:  { fontFamily: FONTS.semibold, fontSize: SIZES.textBase, color: COLORS.textPrimary },
-  garageAddr:  { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted, marginTop: 2 },
-  garageRow:   { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
-  garagePhone: { fontFamily: FONTS.medium, fontSize: SIZES.textXs, color: COLORS.textSecondary },
+  garageName: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textBase,
+    color: COLORS.textPrimary,
+  },
+  garageAddr: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  garageRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 4,
+  },
+  garagePhone: {
+    fontFamily: FONTS.medium,
+    fontSize: SIZES.textXs,
+    color: COLORS.textSecondary,
+  },
 
   // Recent orders
   emptyBox: { alignItems: "center", paddingVertical: 32, gap: 8 },
-  emptyTxt: { fontFamily: FONTS.regular, fontSize: SIZES.textSm, color: COLORS.textMuted },
+  emptyTxt: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textSm,
+    color: COLORS.textMuted,
+  },
   orderCard: {
     flexDirection: "row",
-    backgroundColor: COLORS.bgCard, borderRadius: SIZES.radiusMd,
-    padding: SIZES.md, marginBottom: SIZES.sm,
-    borderWidth: 1, borderLeftWidth: 4, borderColor: COLORS.borderLight,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusMd,
+    padding: SIZES.md,
+    marginBottom: SIZES.sm,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+    borderColor: COLORS.borderLight,
     ...SHADOWS.sm,
   },
-  orderRow:  { flexDirection: "row", alignItems: "center", gap: 4 },
-  orderNo:   { fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: COLORS.textPrimary },
-  orderVeh:  { fontFamily: FONTS.medium, fontSize: SIZES.textXs, color: COLORS.textSecondary, flex: 1 },
-  orderDate: { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted },
-  orderAmt:  { fontFamily: FONTS.semibold, fontSize: SIZES.textSm, color: "#3b82f6" },
+  orderRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  orderNo: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textBase,
+    color: COLORS.textPrimary,
+  },
+  orderVeh: {
+    fontFamily: FONTS.medium,
+    fontSize: SIZES.textXs,
+    color: COLORS.textSecondary,
+    flex: 1,
+  },
+  orderDate: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+  },
+  orderAmt: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textSm,
+    color: "#3b82f6",
+  },
 });

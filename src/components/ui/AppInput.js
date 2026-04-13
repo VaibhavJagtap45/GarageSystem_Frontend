@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS, FONTS, SIZES } from "../../utils/constants";
+import { useFontSizes } from "../../context/PreferencesContext";
 
 export default function AppInput({
   label,
@@ -34,6 +35,7 @@ export default function AppInput({
   accessibilityLabel,
   accessibilityHint,
 }) {
+  const fs = useFontSizes();
   const [focused, setFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const borderAnim = useRef(new Animated.Value(0)).current;
@@ -77,9 +79,9 @@ export default function AppInput({
     <View style={[styles.wrap, style]}>
       {(label || charCount !== null) && (
         <View style={styles.labelRow}>
-          {label ? <Text style={styles.label}>{label}</Text> : <View />}
+          {label ? <Text style={[styles.label, { fontSize: fs.textSm }]}>{label}</Text> : <View />}
           {charCount !== null && (
-            <Text style={styles.charCount}>
+            <Text style={[styles.charCount, { fontSize: fs.textXs }]}>
               {charCount}/{maxLength}
             </Text>
           )}
@@ -121,7 +123,7 @@ export default function AppInput({
           returnKeyType={returnKeyType}
           onSubmitEditing={onSubmitEditing}
           blurOnSubmit={blurOnSubmit}
-          style={[styles.input, multiline && styles.inputMultiline, inputStyle]}
+          style={[styles.input, { fontSize: fs.textBase }, multiline && styles.inputMultiline, inputStyle]}
           accessibilityLabel={accessibilityLabel || label}
           accessibilityHint={accessibilityHint}
         />
@@ -148,7 +150,7 @@ export default function AppInput({
         )}
       </Animated.View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { fontSize: fs.textXs }]}>{error}</Text> : null}
     </View>
   );
 }

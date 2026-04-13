@@ -99,6 +99,17 @@ export const getVehiclesByCustomer = async (customerId) => {
   }
 };
 
+// DELETE CUSTOMER + their vehicles
+// DELETE /api/v1/customers/:id
+export const deleteCustomer = async (id) => {
+  try {
+    const response = await axiosClient.delete(`/customers/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const updateVehicle = async (vehicleId, data) => {
   try {
     const response = await axiosClient.put(

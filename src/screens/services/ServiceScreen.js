@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,11 +7,21 @@ import {
   TouchableOpacity,
   Platform,
 } from "react-native";
+import { usePreferences, useFontSizes } from "../../context/PreferencesContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { COLORS, FONTS, SIZES, SHADOWS } from "../../utils/constants";
+import { useFocusEffect } from "@react-navigation/native";
+import {
+  COLORS,
+  FONTS,
+  SIZES,
+  SHADOWS,
+  REPAIR_ORDER_ENDPOINTS,
+  INVOICE_ENDPOINTS,
+} from "../../utils/constants";
 import Badge from "../../components/ui/Badge";
+import axiosClient from "../../api/axios";
 
 const QUICK_ACTIONS = [
   {
@@ -34,12 +44,11 @@ const QUICK_ACTIONS = [
   },
 ];
 
-const STATUS_CARDS = [
+const STATUS_CARD_TEMPLATES = [
   {
     id: "open",
     title: "Open",
     subtitle: "Repair order created",
-    count: 0,
     icon: "inbox-outline",
     accent: COLORS.primary,
     accentSoft: COLORS.primaryLight,
@@ -49,7 +58,6 @@ const STATUS_CARDS = [
     id: "wip",
     title: "WIP",
     subtitle: "Work in progress",
-    count: 0,
     icon: "progress-clock",
     accent: "#BA7517",
     accentSoft: "#FFFBEB",
@@ -59,7 +67,6 @@ const STATUS_CARDS = [
     id: "ready",
     title: "Ready",
     subtitle: "Vehicle ready",
-    count: 0,
     icon: "clipboard-check-outline",
     accent: COLORS.success,
     accentSoft: COLORS.primaryLight,
@@ -68,30 +75,30 @@ const STATUS_CARDS = [
   {
     id: "due",
     title: "Payment Due",
-    subtitle: "Invoice prepared",
-    count: 0,
+    subtitle: "Unpaid & partial invoices",
     icon: "wallet-outline",
     accent: COLORS.error,
     accentSoft: COLORS.errorLight,
-    helper: "₹0 pending",
-    onPress: (nav) => nav.navigate("Orders", { initialTab: "CREATED" }),
+    onPress: (nav) => nav.navigate("PaymentDue"),
   },
 ];
 
-function SectionHeader({ title, actionLabel, onAction }) {
+function SectionHeader({ title, actionLabel, onAction, fs }) {
   return (
     <View style={s.sectionHeader}>
-      <Text style={s.sectionTitle}>{title}</Text>
+      <Text style={[s.sectionTitle, { fontSize: fs.textMd }]}>{title}</Text>
       {actionLabel && (
         <TouchableOpacity onPress={onAction} accessibilityRole="button">
-          <Text style={s.sectionAction}>{actionLabel}</Text>
+          <Text style={[s.sectionAction, { fontSize: fs.textSm }]}>
+            {actionLabel}
+          </Text>
         </TouchableOpacity>
       )}
     </View>
   );
 }
 
-function ActionRow({ item, navigation }) {
+function ActionRow({ item, navigation, fs }) {
   return (
     <TouchableOpacity
       style={s.actionRow}
@@ -108,15 +115,19 @@ function ActionRow({ item, navigation }) {
         />
       </View>
       <View style={s.actionContent}>
-        <Text style={s.actionTitle}>{item.title}</Text>
-        <Text style={s.actionSub}>{item.subtitle}</Text>
+        <Text style={[s.actionTitle, { fontSize: fs.textBase }]}>
+          {item.title}
+        </Text>
+        <Text style={[s.actionSub, { fontSize: fs.textSm }]}>
+          {item.subtitle}
+        </Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
     </TouchableOpacity>
   );
 }
 
-function StatCard({ card, navigation }) {
+function StatCard({ card, navigation, fs }) {
   return (
     <View style={s.statCard}>
       <TouchableOpacity
@@ -143,15 +154,26 @@ function StatCard({ card, navigation }) {
               },
             ]}
           >
-            <Text style={[s.statCount, { color: card.accent }]}>
+            <Text
+              style={[
+                s.statCount,
+                { color: card.accent, fontSize: fs.textBase },
+              ]}
+            >
               {card.count}
             </Text>
           </View>
         </View>
-        <Text style={s.statTitle}>{card.title}</Text>
-        <Text style={s.statSub}>{card.subtitle}</Text>
+        <Text style={[s.statTitle, { fontSize: fs.textBase }]}>
+          {card.title}
+        </Text>
+        <Text style={[s.statSub, { fontSize: fs.textXs }]}>
+          {card.subtitle}
+        </Text>
         {card.helper ? (
-          <Text style={[s.statHelper, { color: card.accent }]}>
+          <Text
+            style={[s.statHelper, { color: card.accent, fontSize: fs.textXs }]}
+          >
             {card.helper}
           </Text>
         ) : null}
@@ -160,8 +182,77 @@ function StatCard({ card, navigation }) {
   );
 }
 
+const INITIAL_STATS = { open: 0, wip: 0, ready: 0, due: 0, dueAmount: 0 };
+
 export default function ServiceScreen() {
   const navigation = useNavigation();
+  const { notify } = usePreferences();
+  const fs = useFontSizes();
+  const [stats, setStats] = useState(INITIAL_STATS);
+
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      const [createdRes, wipRes, readyRes, dueRes, invoiceStatsRes] =
+        await Promise.allSettled([
+          axiosClient.get(REPAIR_ORDER_ENDPOINTS.LIST, {
+            params: { status: "created", limit: 1 },
+          }),
+          axiosClient.get(REPAIR_ORDER_ENDPOINTS.LIST, {
+            params: { status: "in_progress", limit: 1 },
+          }),
+          axiosClient.get(REPAIR_ORDER_ENDPOINTS.LIST, {
+            params: { status: "vehicle_ready", limit: 1 },
+          }),
+          axiosClient.get(INVOICE_ENDPOINTS.LIST, {
+            params: { paymentStatus: "unpaid", limit: 1 },
+          }),
+          axiosClient.get(INVOICE_ENDPOINTS.STATS),
+        ]);
+
+      setStats({
+        open:
+          createdRes.status === "fulfilled"
+            ? (createdRes.value.data?.data?.total ?? 0)
+            : 0,
+        wip:
+          wipRes.status === "fulfilled"
+            ? (wipRes.value.data?.data?.total ?? 0)
+            : 0,
+        ready:
+          readyRes.status === "fulfilled"
+            ? (readyRes.value.data?.data?.total ?? 0)
+            : 0,
+        due:
+          dueRes.status === "fulfilled"
+            ? (dueRes.value.data?.data?.total ?? 0)
+            : 0,
+        dueAmount:
+          invoiceStatsRes.status === "fulfilled"
+            ? (invoiceStatsRes.value.data?.data?.credit ?? 0)
+            : 0,
+      });
+    } catch {
+      // silently degrade — zeros remain on failure
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboardStats();
+    }, [fetchDashboardStats]),
+  );
+
+  const statusCards = [
+    { ...STATUS_CARD_TEMPLATES[0], count: stats.open },
+    { ...STATUS_CARD_TEMPLATES[1], count: stats.wip },
+    { ...STATUS_CARD_TEMPLATES[2], count: stats.ready },
+    {
+      ...STATUS_CARD_TEMPLATES[3],
+      count: stats.due,
+      helper: `₹${Number(stats.dueAmount).toLocaleString("en-IN")} pending`,
+    },
+  ];
+
   return (
     <SafeAreaView style={s.safe} edges={["top"]}>
       <ScrollView
@@ -173,36 +264,36 @@ export default function ServiceScreen() {
       >
         <View style={s.header}>
           <View>
-            <Text style={s.greeting}>Good morning 👋</Text>
-            <Text style={s.garageName}>Apno Garage Workshop</Text>
+            <Text style={[s.greeting, { fontSize: fs.textSm }]}>Hello 👋</Text>
+            <Text style={[s.garageName, { fontSize: fs.textXl }]}>
+              Aapno Garage Workshop
+            </Text>
           </View>
-          <TouchableOpacity
-            style={s.notifBtn}
-            accessibilityLabel="Notifications"
-            accessibilityRole="button"
-          >
-            <Ionicons
-              name="notifications-outline"
-              size={20}
-              color={COLORS.textPrimary}
-            />
-          </TouchableOpacity>
+          <View style={s.headerActions}>
+            <TouchableOpacity
+              style={s.notifBtn}
+              onPress={() => navigation.navigate("Calendar")}
+              accessibilityLabel="Calendar"
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name="calendar-outline"
+                size={20}
+                color={COLORS.textPrimary}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* <View style={s.trialBanner}>
-          <View style={s.trialLeft}>
-            <Ionicons name="time-outline" size={16} color={COLORS.error} />
-            <Text style={s.trialText}>Trial ends in 7 days</Text>
-          </View>
-          <TouchableOpacity style={s.buyBtn} accessibilityRole="button">
-            <Text style={s.buyText}>Upgrade</Text>
-          </TouchableOpacity>
-        </View> */}
-
-        <SectionHeader title="Quick Actions" />
+        <SectionHeader title="Quick Actions" fs={fs} />
         <View style={s.section}>
           {QUICK_ACTIONS.map((item) => (
-            <ActionRow key={item.id} item={item} navigation={navigation} />
+            <ActionRow
+              key={item.id}
+              item={item}
+              navigation={navigation}
+              fs={fs}
+            />
           ))}
         </View>
 
@@ -210,10 +301,16 @@ export default function ServiceScreen() {
           title="Order Status"
           actionLabel="See all"
           onAction={() => navigation.navigate("Orders")}
+          fs={fs}
         />
         <View style={s.statsGrid}>
-          {STATUS_CARDS.map((card) => (
-            <StatCard key={card.id} card={card} navigation={navigation} />
+          {statusCards.map((card) => (
+            <StatCard
+              key={card.id}
+              card={card}
+              navigation={navigation}
+              fs={fs}
+            />
           ))}
         </View>
 
@@ -236,8 +333,12 @@ export default function ServiceScreen() {
               />
             </View>
             <View style={s.actionContent}>
-              <Text style={s.actionTitle}>Completed Orders</Text>
-              <Text style={s.actionSub}>View full order history</Text>
+              <Text style={[s.actionTitle, { fontSize: fs.textBase }]}>
+                Completed Orders
+              </Text>
+              <Text style={[s.actionSub, { fontSize: fs.textSm }]}>
+                View full order history
+              </Text>
             </View>
             <Ionicons
               name="chevron-forward"
@@ -273,6 +374,11 @@ const s = StyleSheet.create({
     color: COLORS.textPrimary,
     letterSpacing: -0.3,
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SIZES.sm,
   },
   notifBtn: {
     width: 40,

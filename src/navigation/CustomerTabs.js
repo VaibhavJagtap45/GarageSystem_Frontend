@@ -8,10 +8,21 @@ import CustomerOrders        from "../screens/customer/CustomerOrders";
 import CustomerOrderDetail   from "../screens/customer/CustomerOrderDetail";
 import CustomerInvoices      from "../screens/customer/CustomerInvoices";
 import CustomerInvoiceDetail from "../screens/customer/CustomerInvoiceDetail";
-import CustomerProfile       from "../screens/customer/CustomerProfile";
+import CustomerProfile           from "../screens/customer/CustomerProfile";
+import CustomerBookingsScreen    from "../screens/customer/CustomerBookingsScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
+
+// ── Home stack: Home → Bookings
+function CHomeStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="CHomeMain"     component={CustomerHome} />
+      <Stack.Screen name="CBookings"     component={CustomerBookingsScreen} />
+    </Stack.Navigator>
+  );
+}
 
 // ── Orders stack: Orders list → Order detail → Invoice detail
 function COrdersStack() {
@@ -48,7 +59,7 @@ export default function CustomerTabs() {
       screenOptions={{ headerShown: false }}
       tabBar={(p) => <CTabBar {...p} tabs={TABS} />}
     >
-      <Tab.Screen name="Home"     component={CustomerHome} />
+      <Tab.Screen name="Home"     component={CHomeStack} />
       <Tab.Screen name="Services" component={CustomerServices} />
       <Tab.Screen name="Orders"   component={COrdersStack} />
       <Tab.Screen name="Invoices" component={CInvoicesStack} />

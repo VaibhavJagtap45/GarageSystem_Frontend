@@ -742,12 +742,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { COLORS, FONTS, SIZES, SHADOWS } from "../../utils/constants";
+import { COLORS, FONTS, SIZES, SHADOWS, VEHICLE_ENDPOINTS } from "../../utils/constants";
 import TopNav from "../../components/ui/TopNav";
 import AppInput from "../../components/ui/AppInput";
+import AppSelect from "../../components/ui/AppSelect";
 import AppButton from "../../components/ui/AppButton";
 import Avatar from "../../components/ui/Avatar";
 import EmptyState from "../../components/ui/EmptyState";
+import axiosClient from "../../api/axios";
 import {
   addVehicle,
   getVehiclesByCustomer,
@@ -880,8 +882,8 @@ const ddmmyyyyToISO = (value) => {
 function VehicleFormModal({ visible, onClose, onSave, saving, initialData }) {
   const isEdit = !!initialData;
 
-  const [vehicleBrand, setVehicleBrand] = useState("");
-  const [vehicleModel, setVehicleModel] = useState("");
+  const [vehicleBrand, setVehicleBrand] = useState(null);
+  const [vehicleModel, setVehicleModel] = useState(null);
   const [vehicleRegisterNo, setVehicleRegisterNo] = useState("");
   const [vehiclePurchaseDate, setVehiclePurchaseDate] = useState("");
   const [vehicleEngineNo, setVehicleEngineNo] = useState("");
@@ -892,23 +894,54 @@ function VehicleFormModal({ visible, onClose, onSave, saving, initialData }) {
   const [showMore, setShowMore] = useState(false);
   const [errors, setErrors] = useState({});
 
+  // ── Brand / Model dropdown state ─────────────────────────────────
+  const [brandOptions,  setBrandOptions]  = useState([]);
+  const [modelOptions,  setModelOptions]  = useState([]);
+  const [brandsLoading, setBrandsLoading] = useState(false);
+  const [modelsLoading, setModelsLoading] = useState(false);
+
+  // Load brands once when modal opens
+  useEffect(() => {
+    if (!visible) return;
+    setBrandsLoading(true);
+    axiosClient
+      .get(VEHICLE_ENDPOINTS.BRANDS)
+      .then((r) =>
+        setBrandOptions(
+          (r.data?.data?.brands ?? []).map((b) => ({ value: b, label: b })),
+        ),
+      )
+      .catch(() => setBrandOptions([]))
+      .finally(() => setBrandsLoading(false));
+  }, [visible]);
+
+  // Load models whenever brand changes
+  useEffect(() => {
+    if (!vehicleBrand) { setModelOptions([]); return; }
+    setModelsLoading(true);
+    axiosClient
+      .get(VEHICLE_ENDPOINTS.MODELS, { params: { brand: vehicleBrand } })
+      .then((r) =>
+        setModelOptions(
+          (r.data?.data?.models ?? []).map((m) => ({ value: m, label: m })),
+        ),
+      )
+      .catch(() => setModelOptions([]))
+      .finally(() => setModelsLoading(false));
+  }, [vehicleBrand]);
+
   // Populate fields when editing
   useEffect(() => {
     if (visible && initialData) {
-      setVehicleBrand(initialData.vehicleBrand || "");
-      setVehicleModel(initialData.vehicleModel || "");
+      setVehicleBrand(initialData.vehicleBrand || null);
+      setVehicleModel(initialData.vehicleModel || null);
       setVehicleRegisterNo(initialData.vehicleRegisterNo || "");
-      setVehiclePurchaseDate(
-        formatDateForInput(initialData.vehiclePurchaseDate),
-      );
+      setVehiclePurchaseDate(formatDateForInput(initialData.vehiclePurchaseDate));
       setVehicleEngineNo(initialData.vehicleEngineNo || "");
       setVehicleVinNo(initialData.vehicleVinNo || "");
       setVehicleInsuranceProvider(initialData.vehicleInsuranceProvider || "");
       setVehiclePolicyNo(initialData.vehiclePolicyNo || "");
-      setVehicleInsuranceExpire(
-        formatDateForInput(initialData.vehicleInsuranceExpire),
-      );
-      // Auto-open advanced section if any advanced field has data
+      setVehicleInsuranceExpire(formatDateForInput(initialData.vehicleInsuranceExpire));
       const hasAdvanced =
         initialData.vehicleEngineNo ||
         initialData.vehicleVinNo ||
@@ -922,8 +955,9 @@ function VehicleFormModal({ visible, onClose, onSave, saving, initialData }) {
   }, [visible, initialData]);
 
   const resetForm = () => {
-    setVehicleBrand("");
-    setVehicleModel("");
+    setVehicleBrand(null);
+    setVehicleModel(null);
+    setModelOptions([]);
     setVehicleRegisterNo("");
     setVehiclePurchaseDate("");
     setVehicleEngineNo("");
@@ -942,20 +976,13 @@ function VehicleFormModal({ visible, onClose, onSave, saving, initialData }) {
 
   const validate = () => {
     const e = {};
-    if (!vehicleBrand.trim()) e.vehicleBrand = "Make is required";
-    if (!vehicleModel.trim()) e.vehicleModel = "Model is required";
-    if (vehiclePurchaseDate.trim() && !ddmmyyyyToISO(vehiclePurchaseDate)) {
+    if (!vehicleBrand)            e.vehicleBrand = "Brand is required";
+    if (!vehicleModel)            e.vehicleModel = "Model is required";
+    if (!vehicleRegisterNo.trim()) e.vehicleRegisterNo = "Registration number is required";
+    if (vehiclePurchaseDate.trim() && !ddmmyyyyToISO(vehiclePurchaseDate))
       e.vehiclePurchaseDate = "Use DD/MM/YYYY format";
-    }
-
-    if (
-      vehicleInsuranceExpire.trim() &&
-      !ddmmyyyyToISO(vehicleInsuranceExpire)
-    ) {
+    if (vehicleInsuranceExpire.trim() && !ddmmyyyyToISO(vehicleInsuranceExpire))
       e.vehicleInsuranceExpire = "Use DD/MM/YYYY format";
-    }
-    if (!vehicleRegisterNo.trim())
-      e.vehicleRegisterNo = "Registration number is required";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -986,9 +1013,9 @@ function VehicleFormModal({ visible, onClose, onSave, saving, initialData }) {
 
     onSave(
       {
-        vehicleBrand: vehicleBrand.trim(),
-        vehicleModel: vehicleModel.trim(),
-        vehicleRegisterNo: vehicleRegisterNo.trim(),
+        vehicleBrand,
+        vehicleModel,
+        vehicleRegisterNo: vehicleRegisterNo.trim().toUpperCase(),
         vehiclePurchaseDate: purchaseDateISO,
         vehicleEngineNo: vehicleEngineNo.trim() || undefined,
         vehicleVinNo: vehicleVinNo.trim() || undefined,
@@ -1051,29 +1078,38 @@ function VehicleFormModal({ visible, onClose, onSave, saving, initialData }) {
             >
               <Text style={styles.fieldGroupLabel}>BASIC DETAILS</Text>
 
-              <AppInput
-                label="Make *"
-                icon="medal-outline"
+              <AppSelect
+                label="Brand *"
+                icon="car-outline"
+                placeholder={brandsLoading ? "Loading…" : "Select brand"}
+                options={brandOptions}
                 value={vehicleBrand}
-                onChangeText={(t) => {
-                  setVehicleBrand(t);
-                  setErrors((e) => ({ ...e, vehicleBrand: null }));
+                onChange={(val) => {
+                  setVehicleBrand(val);
+                  setVehicleModel(null);
+                  setModelOptions([]);
+                  setErrors((e) => ({ ...e, vehicleBrand: null, vehicleModel: null }));
                 }}
-                placeholder="e.g. Maruti, Honda"
                 error={errors.vehicleBrand}
-                autoCapitalize="words"
               />
-              <AppInput
+              <AppSelect
                 label="Model *"
-                icon="car-sport-outline"
+                icon="git-branch-outline"
+                placeholder={
+                  !vehicleBrand
+                    ? "Select brand first"
+                    : modelsLoading
+                      ? "Loading…"
+                      : "Select model"
+                }
+                options={modelOptions}
                 value={vehicleModel}
-                onChangeText={(t) => {
-                  setVehicleModel(t);
+                onChange={(val) => {
+                  setVehicleModel(val);
                   setErrors((e) => ({ ...e, vehicleModel: null }));
                 }}
-                placeholder="e.g. Swift, Activa"
+                disabled={!vehicleBrand}
                 error={errors.vehicleModel}
-                autoCapitalize="words"
               />
               <AppInput
                 label="Registration Number *"

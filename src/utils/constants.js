@@ -204,14 +204,17 @@ export const AUTH_ENDPOINTS = {
   UPLOAD_IMAGE: "/auth/upload-image",
   REFRESH: "/auth/refresh",
   LOGOUT: "/auth/logout",
-  GARAGE: "/auth/garage",
+  GARAGE:      "/auth/garage",
+  PREFERENCES: "/auth/preferences",
 };
 
 export const USER_ENDPOINTS = {
-  GET_PROFILE: "/user/get-profile",
-  ADD_USER: "/user/add-user",
+  GET_PROFILE:  "/user/get-profile",
+  ADD_USER:     "/user/add-user",
+  PUSH_TOKEN:   "/user/push-token",  // POST { token: "ExponentPushToken[...]" }
   MEMBERS_LIST: "/members",
   VENDORS_LIST: "/vendors",
+  VENDOR_DETAIL: (id) => `/vendors/${id}`,
 };
 
 export const CUSTOMER_ENDPOINTS = {
@@ -259,6 +262,7 @@ export const REPAIR_ORDER_ENDPOINTS = {
   DETAIL: (id) => `/repair-orders/${id}`,               // GET / PUT / DELETE
   CANCELLED: "/repair-orders/cancelled",                // GET paginated cancelled orders
   TALLY_EXPORT: "/repair-orders/tally-export",          // GET ?dateFrom&dateTo
+  CALENDAR: "/repair-orders/calendar",                  // GET ?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
 };
 
 // ─── Purchase Orders ──────────────────────────────────────────────────────────
@@ -309,11 +313,42 @@ export const TAG_ENDPOINTS = {
   UPDATE: (id) => `/tags/${id}`, // PUT
   DELETE: (id) => `/tags/${id}`, // DELETE
 };
+// ─── Bookings ─────────────────────────────────────────────────────────────────
+export const BOOKING_ENDPOINTS = {
+  LIST:          "/bookings",
+  CREATE:        "/bookings",
+  DETAIL:        (id) => `/bookings/${id}`,
+  STATUS:        (id) => `/bookings/${id}/status`,
+  CONVERT:       (id) => `/bookings/${id}/convert`,
+  SYNC_CALENDAR: (id) => `/bookings/${id}/calendar-sync`,
+  MY_BOOKINGS:   "/customer/bookings",
+  MY_CREATE:     "/customer/bookings",
+  MY_CANCEL:     (id) => `/customer/bookings/${id}/cancel`,
+  LINK_RO:       (id) => `/bookings/${id}/link-ro`,
+};
+
+export const GOOGLE_CALENDAR_ENDPOINTS = {
+  STATUS:      "/integrations/google-calendar/status",
+  CONNECT_URL: "/integrations/google-calendar/connect-url",
+  DISCONNECT:  "/integrations/google-calendar/disconnect",
+};
+
+// ─── Reports ──────────────────────────────────────────────────────────────────
+export const REPORTS_ENDPOINTS = {
+  ACCOUNTS_PAYABLE:  "/reports/accounts-payable",
+  STOCK_IN:          "/reports/stock-in",
+  STOCK_OUT:         "/reports/stock-out",
+  PARTS_SALES:       "/reports/parts-sales",
+  INVENTORY_AGEING:  "/reports/inventory-ageing",
+  GST:               "/reports/gst",
+};
+
 // ─── STORAGE KEYS ────────────────────────────────────────────────────────────
 export const STORAGE_KEYS = {
-  TOKEN: "@access_token",
-  USER: "@user",
-  GARAGE: "@garage",
+  TOKEN:       "@access_token",
+  USER:        "@user",
+  GARAGE:      "@garage",
+  PREFERENCES: "@app_preferences",
 };
 
 // ─── RAW PALETTE ─────────────────────────────────────────────────────────────

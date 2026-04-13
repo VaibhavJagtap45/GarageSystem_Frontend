@@ -308,7 +308,7 @@ import AppInput from "../../components/ui/AppInput";
 import EmptyState from "../../components/ui/EmptyState";
 import { SkeletonListItem } from "../../components/ui/SkeletonLoader";
 import Avatar from "../../components/ui/Avatar";
-import { getCustomers } from "../../api/user";
+import { getCustomers, deleteCustomer } from "../../api/user";
 
 // ─── Customer Card ────────────────────────────────────────────────────────────
 function CustomerCard({ customer, onKebab, onPress }) {
@@ -430,13 +430,45 @@ export default function MyCustomersScreen() {
     );
   }, [customers, searchQuery]);
 
-  const handleKebab = (customer) => {
-    Alert.alert(customer.fullName, "What would you like to do?", [
-      { text: "Edit", onPress: () => {} },
-      { text: "Delete", style: "destructive", onPress: () => {} },
+  const handleDelete = useCallback((customer) => {
+    Alert.alert(
+      "Delete Customer",
+      `Remove ${customer.fullName || "this customer"} and all their vehicles? This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            // Optimistic removal so the UI feels instant
+            setCustomers((prev) => prev.filter((c) => c._id !== customer._id));
+            try {
+              await deleteCustomer(customer._id);
+            } catch (err) {
+              // Rollback on failure
+              setCustomers((prev) => [customer, ...prev]);
+              Alert.alert("Error", err.displayMessage || "Failed to delete customer.");
+            }
+          },
+        },
+      ],
+    );
+  }, []);
+
+  const handleKebab = useCallback((customer) => {
+    Alert.alert(customer.fullName || "Customer", "What would you like to do?", [
+      {
+        text: "View Profile",
+        onPress: () => navigation.navigate("CustomerProfile", { customer }),
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => handleDelete(customer),
+      },
       { text: "Cancel", style: "cancel" },
     ]);
-  };
+  }, [navigation, handleDelete]);
 
   const rightElement = (
     <View style={styles.navRight}>

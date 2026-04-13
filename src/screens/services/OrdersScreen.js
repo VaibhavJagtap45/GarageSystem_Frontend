@@ -309,11 +309,30 @@ const STATUS_META = {
   cancelled: { label: "Cancelled", variant: "error" },
 };
 
+// ─── Advance Booking helpers ──────────────────────────────────────────────────
+const ADV_BG   = "#FEF3C7";   // amber-100
+const ADV_TEXT = "#92400E";   // amber-800
+const ADV_ICON = "#D97706";   // amber-600
+
+function isAdvance(scheduledAt) {
+  return scheduledAt && new Date(scheduledAt) > new Date();
+}
+
+function fmtScheduled(scheduledAt) {
+  return new Date(scheduledAt).toLocaleString("en-IN", {
+    day:    "2-digit",
+    month:  "short",
+    hour:   "2-digit",
+    minute: "2-digit",
+  });
+}
+
 // ─── Order Card ───────────────────────────────────────────────────────────────
 function OrderCard({ order, onPress, onAssign }) {
-  const customer = order.customerId;
-  const vehicle = order.vehicleId;
-  const meta = STATUS_META[order.status] ?? STATUS_META.created;
+  const customer    = order.customerId;
+  const vehicle     = order.vehicleId;
+  const meta        = STATUS_META[order.status] ?? STATUS_META.created;
+  const advBooking  = isAdvance(order.scheduledAt);
 
   const vehicleLabel = vehicle
     ? `${vehicle.vehicleBrand ?? ""} ${vehicle.vehicleModel ?? ""}`.trim()
@@ -322,24 +341,22 @@ function OrderCard({ order, onPress, onAssign }) {
 
   const dateStr = order.createdAt
     ? new Date(order.createdAt).toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
+        day: "2-digit", month: "short", year: "numeric",
       })
     : "";
 
   return (
     <TouchableOpacity
-      style={styles.orderCard}
+      style={[styles.orderCard, advBooking && styles.orderCardAdv]}
       onPress={onPress}
       activeOpacity={0.75}
     >
-      {/* Left icon */}
-      <View style={styles.orderIconWrap}>
+      {/* Left icon — clock for advance bookings */}
+      <View style={[styles.orderIconWrap, advBooking && styles.orderIconWrapAdv]}>
         <Ionicons
-          name="document-text-outline"
+          name={advBooking ? "time-outline" : "document-text-outline"}
           size={20}
-          color={COLORS.primary}
+          color={advBooking ? ADV_ICON : COLORS.primary}
         />
       </View>
 
@@ -349,7 +366,15 @@ function OrderCard({ order, onPress, onAssign }) {
           <Text style={styles.orderCustomer} numberOfLines={1}>
             {customer?.fullName ?? "Unknown Customer"}
           </Text>
-          <Badge label={meta.label} variant={meta.variant} size="sm" />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            {advBooking && (
+              <View style={styles.advBadge}>
+                <Ionicons name="time-outline" size={9} color={ADV_TEXT} />
+                <Text style={styles.advBadgeTxt}>Advance</Text>
+              </View>
+            )}
+            <Badge label={meta.label} variant={meta.variant} size="sm" />
+          </View>
         </View>
 
         <View style={styles.orderMidRow}>
@@ -361,30 +386,30 @@ function OrderCard({ order, onPress, onAssign }) {
           ) : null}
           {regNo ? (
             <View style={styles.orderMetaChip}>
-              <Ionicons
-                name="id-card-outline"
-                size={11}
-                color={COLORS.textMuted}
-              />
+              <Ionicons name="id-card-outline" size={11} color={COLORS.textMuted} />
               <Text style={styles.orderMetaText}>{regNo}</Text>
             </View>
           ) : null}
           {customer?.phoneNo ? (
             <View style={styles.orderMetaChip}>
-              <Ionicons
-                name="call-outline"
-                size={11}
-                color={COLORS.textMuted}
-              />
+              <Ionicons name="call-outline" size={11} color={COLORS.textMuted} />
               <Text style={styles.orderMetaText}>{customer.phoneNo}</Text>
             </View>
           ) : null}
         </View>
 
+        {/* Advance booking — scheduled date row */}
+        {advBooking && (
+          <View style={styles.advScheduledRow}>
+            <Ionicons name="calendar-outline" size={11} color={ADV_ICON} />
+            <Text style={styles.advScheduledTxt}>
+              Scheduled: {fmtScheduled(order.scheduledAt)}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.orderBottomRow}>
-          <Text style={styles.orderNo}>
-            #{order.orderNo ?? order._id?.slice(-6)}
-          </Text>
+          <Text style={styles.orderNo}>#{order.orderNo ?? order._id?.slice(-6)}</Text>
           <Text style={styles.orderDate}>{dateStr}</Text>
           <Text style={styles.orderAmount}>
             {order.totalAmount > 0
@@ -1047,6 +1072,11 @@ const styles = StyleSheet.create({
     padding: SIZES.md,
     ...SHADOWS.sm,
   },
+  orderCardAdv: {
+    borderColor: "#F59E0B",
+    borderLeftWidth: 3,
+    backgroundColor: "#FFFBEB",
+  },
   orderIconWrap: {
     width: 42,
     height: 42,
@@ -1055,6 +1085,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
+  },
+  orderIconWrapAdv: { backgroundColor: "#FEF3C7" },
+  // Advance booking badge + scheduled row
+  advBadge: {
+    flexDirection: "row", alignItems: "center", gap: 3,
+    backgroundColor: "#FEF3C7", borderRadius: 99,
+    paddingHorizontal: 6, paddingVertical: 2,
+    borderWidth: 1, borderColor: "#FCD34D",
+  },
+  advBadgeTxt: { fontFamily: FONTS.semibold, fontSize: 9, color: "#92400E" },
+  advScheduledRow: {
+    flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1,
+  },
+  advScheduledTxt: {
+    fontFamily: FONTS.semibold, fontSize: 10, color: "#D97706",
   },
   orderInfo: { flex: 1, gap: 4 },
   orderTopRow: {

@@ -102,50 +102,50 @@ const INVENTORY_REPORTS = [
   },
 ];
 
-const PERFORMANCE_REPORTS = [
-  {
-    id: "service_sales",
-    title: "Service Sales Reports",
-    subtitle: "Service revenue day/month wise",
-    icon: "chart-bar",
-    accent: COLORS.primary,
-    accentSoft: COLORS.primaryLight,
-  },
-  {
-    id: "service_reports",
-    title: "Service Overview",
-    subtitle: "General service center metrics",
-    icon: "tools",
-    accent: COLORS.secondary,
-    accentSoft: "#FFFBEB",
-  },
-  {
-    id: "tag_mechanic",
-    title: "TAG / Mechanic Based",
-    subtitle: "Performance by staff and tags",
-    icon: "account-hard-hat",
-    accent: COLORS.success,
-    accentSoft: COLORS.primaryLight,
-  },
-];
+// const PERFORMANCE_REPORTS = [
+//   {
+//     id: "service_sales",
+//     title: "Service Sales Reports",
+//     subtitle: "Service revenue day/month wise",
+//     icon: "chart-bar",
+//     accent: COLORS.primary,
+//     accentSoft: COLORS.primaryLight,
+//   },
+//   {
+//     id: "service_reports",
+//     title: "Service Overview",
+//     subtitle: "General service center metrics",
+//     icon: "tools",
+//     accent: COLORS.secondary,
+//     accentSoft: "#FFFBEB",
+//   },
+//   {
+//     id: "tag_mechanic",
+//     title: "TAG / Mechanic Based",
+//     subtitle: "Performance by staff and tags",
+//     icon: "account-hard-hat",
+//     accent: COLORS.success,
+//     accentSoft: COLORS.primaryLight,
+//   },
+// ];
 
 const OPERATIONAL_REPORTS = [
-  {
-    id: "open_order",
-    title: "Open Order Report",
-    subtitle: "Currently active job cards",
-    icon: "folder-open-outline",
-    accent: COLORS.primary,
-    accentSoft: COLORS.primaryLight,
-  },
-  {
-    id: "service_reminder",
-    title: "Service Reminder",
-    subtitle: "Upcoming scheduled maintenance",
-    icon: "bell-outline",
-    accent: "#BA7517",
-    accentSoft: "#FFFBEB",
-  },
+  // {
+  //   id: "open_order",
+  //   title: "Open Order Report",
+  //   subtitle: "Currently active job cards",
+  //   icon: "folder-open-outline",
+  //   accent: COLORS.primary,
+  //   accentSoft: COLORS.primaryLight,
+  // },
+  // {
+  //   id: "service_reminder",
+  //   title: "Service Reminder",
+  //   subtitle: "Upcoming scheduled maintenance",
+  //   icon: "bell-outline",
+  //   accent: "#BA7517",
+  //   accentSoft: "#FFFBEB",
+  // },
   {
     id: "daily",
     title: "Daily Report",
@@ -181,14 +181,20 @@ function SectionHeader({ title, actionLabel, onAction }) {
 
 // Maps report id → screen name (undefined = coming soon)
 const REPORT_SCREEN_MAP = {
-  income_expense:   "IncomeExpenseReport",
-  order_income:     "IncomeExpenseReport",
-  payment:          "PaymentReport",
-  invoice_export:   "TallyExport",
-  open_order:       "Orders",
+  income_expense: "IncomeExpenseReport",
+  order_income: "IncomeExpenseReport",
+  payment: "PaymentReport",
+  accounts_payable: "AccountsPayable",
+  gst: "GstReport",
+  invoice_export: "TallyExport",
+  stock_in: "StockInReport",
+  stock_out: "StockOutReport",
+  parts_sales: "PartsSalesReport",
+  inventory_ageing: "InventoryAgeing",
+  open_order: "Orders",
   service_reminder: "ServiceReminders",
-  daily:            "DailyReport",
-  monthly:          "MonthlyReport",
+  daily: "DailyReport",
+  monthly: "MonthlyReport",
 };
 
 function ActionRow({ item, navigation, isLast }) {
@@ -264,19 +270,6 @@ export default function ReportsScreen() {
               item={item}
               navigation={navigation}
               isLast={index === INVENTORY_REPORTS.length - 1}
-            />
-          ))}
-        </View>
-
-        {/* Staff & Performance */}
-        <SectionHeader title="Staff & Performance" />
-        <View style={styles.section}>
-          {PERFORMANCE_REPORTS.map((item, index) => (
-            <ActionRow
-              key={item.id}
-              item={item}
-              navigation={navigation}
-              isLast={index === PERFORMANCE_REPORTS.length - 1}
             />
           ))}
         </View>

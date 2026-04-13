@@ -1,34 +1,30 @@
 {
   "expo": {
-    "name": "ApnoGarage",
-    "slug": "apnogarage",
-    "version": "1.0.0",
+    "name": "GarageSystem",
+    "slug": "GarageSystem",
+    "version": "1.2.0",
     "orientation": "portrait",
-    "scheme": "apnogarage",
+    "scheme": "GarageSystem",
     "userInterfaceStyle": "light",
-
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo.png",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
-
     "assetBundlePatterns": ["**/*"],
-
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.albos.apnogarage",
+      "bundleIdentifier": "com.albos.garageSystem",
       "buildNumber": "1",
       "infoPlist": {
-        "NSContactsUsageDescription": "ApnoGarage uses your contacts to quickly add customers to your garage records.",
-        "NSPhotoLibraryUsageDescription": "ApnoGarage needs access to your photo library to upload your garage logo.",
-        "NSCameraUsageDescription": "ApnoGarage uses the camera to capture your garage logo photo."
+        "NSContactsUsageDescription": "garageSystem uses your contacts to quickly add customers to your garage records.",
+        "NSPhotoLibraryUsageDescription": "garageSystem needs access to your photo library to upload your garage logo.",
+        "NSCameraUsageDescription": "garageSystem uses the camera to capture your garage logo photo."
       }
     },
-
     "android": {
-      "package": "com.albos.apnogarage",
+      "package": "com.albos.garageSystem",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -40,34 +36,46 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.CAMERA",
         "android.permission.INTERNET",
-        "android.permission.ACCESS_NETWORK_STATE"
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
-
     "web": {
       "favicon": "./assets/favicon.png"
     },
-
     "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/logo.png",
+          "color": "#22C55E",
+          "defaultChannel": "default",
+          "sounds": []
+        }
+      ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "ApnoGarage needs access to your photos to upload a garage logo.",
-          "cameraPermission": "ApnoGarage uses the camera to capture your garage logo."
+          "photosPermission": "garageSystem needs access to your photos to upload a garage logo.",
+          "cameraPermission": "garageSystem uses the camera to capture your garage logo."
         }
       ],
       [
         "expo-contacts",
         {
-          "contactsPermission": "ApnoGarage uses your contacts to quickly add customers."
+          "contactsPermission": "garageSystem uses your contacts to quickly add customers."
         }
       ]
     ],
-
     "extra": {
       "eas": {
-        "projectId": "c1dcd4be-3980-4a53-a546-bd11a40bd27f"
+        "projectId": "68484391-db33-44b5-b820-640198bb98af"
       }
-    }
+    },
+    "owner": "jrpant_45"
   }
 }
