@@ -197,15 +197,15 @@ export const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } =
 // ─── API ENDPOINTS ────────────────────────────────────────────────────────────
 
 export const AUTH_ENDPOINTS = {
-  REQUEST_OTP: "/auth/request-otp",
-  RESEND_OTP: "/auth/resend-otp",
-  VERIFY_OTP: "/auth/verify-otp",
-  UPDATE_PROFILE: "/auth/update-garage-profile",
-  UPLOAD_IMAGE: "/auth/upload-image",
-  REFRESH: "/auth/refresh",
-  LOGOUT: "/auth/logout",
-  GARAGE:      "/auth/garage",
-  PREFERENCES: "/auth/preferences",
+  REGISTER:        "/auth/register",
+  LOGIN:           "/auth/login",
+  CHANGE_PASSWORD: "/auth/change-password",
+  UPDATE_PROFILE:  "/auth/update-garage-profile",
+  UPLOAD_IMAGE:    "/auth/upload-image",
+  REFRESH:         "/auth/refresh",
+  LOGOUT:          "/auth/logout",
+  GARAGE:          "/auth/garage",
+  PREFERENCES:     "/auth/preferences",
 };
 
 export const USER_ENDPOINTS = {

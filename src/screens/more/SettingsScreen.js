@@ -93,6 +93,18 @@ const PREFERENCES = [
   },
 ];
 
+const ACCOUNT_SETTINGS = [
+  {
+    id: "change_password",
+    title: "Change Password",
+    subtitle: "Update your account password",
+    icon: "lock-reset",
+    accent: COLORS.primary,
+    accentSoft: COLORS.primaryLight,
+    onPress: (nav) => nav.navigate("ChangePassword"),
+  },
+];
+
 // const ADDON_MODULES = [
 //   {
 //     id: "booking_portal",
@@ -204,6 +216,19 @@ export default function SettingsScreen() {
               item={item}
               navigation={navigation}
               isLast={index === PREFERENCES.length - 1}
+            />
+          ))}
+        </View>
+
+        {/* Account */}
+        <SectionHeader title="Account" />
+        <View style={styles.section}>
+          {ACCOUNT_SETTINGS.map((item, index) => (
+            <ActionRow
+              key={item.id}
+              item={item}
+              navigation={navigation}
+              isLast={index === ACCOUNT_SETTINGS.length - 1}
             />
           ))}
         </View>

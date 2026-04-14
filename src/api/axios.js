@@ -35,6 +35,15 @@ axiosClient.interceptors.response.use(
 
     // Attach a friendly displayMessage for UI components and screens
     // eslint-disable-next-line no-param-reassign
+    // Use the server's own message when available — it's always more specific
+    // than a generic fallback. Only fall back to generic text when the server
+    // sends no message at all (network errors, malformed responses, etc.).
+    const serverMessage =
+      error?.response?.data?.message ||
+      error?.response?.data?.msg ||
+      error?.response?.data?.errors?.[0]?.msg ||
+      null;
+
     error.displayMessage =
       !hasApiBaseUrl
         ? "App setup is incomplete. Rebuild the APK with API_BASE_URL configured."
@@ -42,10 +51,7 @@ axiosClient.interceptors.response.use(
           ? "Server is taking too long to respond. Please try again."
           : isNetworkError
             ? "Unable to reach the server. Check your internet connection and API URL."
-            : (
-              error?.response?.data?.msg ||
-              error?.response?.data?.message ||
-              error?.response?.data?.errors?.[0]?.msg ||
+            : serverMessage ||
               (status === 401
                 ? "Session expired. Please login again."
                 : status === 403
@@ -54,11 +60,13 @@ axiosClient.interceptors.response.use(
                     ? "Not found."
                     : status === 500
                       ? "Server error. Try again later."
-                      : "Something went wrong.")
-            );
+                      : "Something went wrong.");
 
+    // Only clear storage on 401 when the user is already authenticated.
+    // During login/register there is no token yet, so skip the wipe.
     if (status === 401) {
-      await clearStorage();
+      const token = await getToken();
+      if (token) await clearStorage();
     }
 
     return Promise.reject(error);

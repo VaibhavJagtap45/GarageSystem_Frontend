@@ -63,6 +63,7 @@ import PartsSalesReportScreen from "../screens/more/PartsSalesReportScreen";
 import InventoryAgeingScreen from "../screens/more/InventoryAgeingScreen";
 import GstReportScreen from "../screens/more/GstReportScreen";
 import GeneralPreferencesScreen from "../screens/more/GeneralPreferencesScreen";
+import ChangePasswordScreen from "../screens/auth/OtpScreen";
 
 const Tab = createBottomTabNavigator();
 const ServiceStack = createNativeStackNavigator();
@@ -207,6 +208,10 @@ function MoreNav() {
       <MoreStack.Screen
         name="GeneralPreferences"
         component={GeneralPreferencesScreen}
+      />
+      <MoreStack.Screen
+        name="ChangePassword"
+        component={ChangePasswordScreen}
       />
     </MoreStack.Navigator>
   );

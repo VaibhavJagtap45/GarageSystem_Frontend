@@ -1,10 +1,10 @@
 import { useState, useCallback } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { COLORS, FONTS, SIZES, SHADOWS } from "../../utils/constants";
-import { customerGetOrderDetail } from "../../api/portal";
+import { customerGetOrderDetail, customerCancelOrder } from "../../api/portal";
 import { inr, fmtDate, STATUS_LABEL } from "../../utils/portalHelpers";
 import Badge from "../../components/portal/Badge";
 import NavBar from "../../components/portal/NavBar";
@@ -15,9 +15,10 @@ const STEPS = ["created", "in_progress", "vehicle_ready", "completed"];
 
 export default function CustomerOrderDetail({ route, navigation }) {
   const { orderId } = route.params;
-  const [order, setOrder]     = useState(null);
-  const [invoice, setInvoice] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [order, setOrder]       = useState(null);
+  const [invoice, setInvoice]   = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [cancelling, setCancelling] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -40,6 +41,31 @@ export default function CustomerOrderDetail({ route, navigation }) {
   if (!order)  return <Empty icon="alert-circle-outline" title="Order not found" />;
 
   const cur = STEPS.indexOf(order.status);
+
+  function handleCancel() {
+    Alert.alert(
+      "Cancel Order",
+      `Are you sure you want to cancel order ${order.orderNo}? This cannot be undone.`,
+      [
+        { text: "Keep Order", style: "cancel" },
+        {
+          text: "Yes, Cancel",
+          style: "destructive",
+          onPress: async () => {
+            setCancelling(true);
+            try {
+              const r = await customerCancelOrder(orderId);
+              setOrder(r.data?.data?.order ?? { ...order, status: "cancelled" });
+            } catch (err) {
+              Alert.alert("Error", err?.response?.data?.message || "Could not cancel order. Please try again.");
+            } finally {
+              setCancelling(false);
+            }
+          },
+        },
+      ],
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
@@ -139,6 +165,24 @@ export default function CustomerOrderDetail({ route, navigation }) {
             <Badge status={invoice.paymentStatus} />
           </TouchableOpacity>
         ) : null}
+
+        {/* Cancel button — only when work hasn't started */}
+        {order.status === "created" && (
+          <TouchableOpacity
+            style={[s.cancelBtn, cancelling && s.cancelBtnDisabled]}
+            onPress={handleCancel}
+            disabled={cancelling}
+          >
+            {cancelling ? (
+              <ActivityIndicator size="small" color={COLORS.error} />
+            ) : (
+              <Ionicons name="close-circle-outline" size={17} color={COLORS.error} />
+            )}
+            <Text style={s.cancelBtnTxt}>
+              {cancelling ? "Cancelling…" : "Cancel Order"}
+            </Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -176,4 +220,7 @@ const s = StyleSheet.create({
   totalAmt:   { fontFamily: FONTS.bold, fontSize: SIZES.textLg, color: COLORS.primary },
   invoiceBtn: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.primary, borderRadius: SIZES.radiusFull, padding: 14, gap: 8, justifyContent: "center" },
   invoiceBtnTxt:{ fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: COLORS.white, flex: 1, textAlign: "center" },
+  cancelBtn:        { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: SIZES.radiusFull, borderWidth: 1.5, borderColor: COLORS.error, padding: 14, marginTop: SIZES.md },
+  cancelBtnDisabled:{ opacity: 0.5 },
+  cancelBtnTxt:     { fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: COLORS.error },
 });

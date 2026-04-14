@@ -34,6 +34,9 @@ export const customerGetProfile = () => axiosClient.get("/customer/profile");
 export const customerUpdateProfile = (data) =>
   axiosClient.put("/customer/profile", data);
 
+export const customerCancelOrder = (id) =>
+  axiosClient.patch(`/customer/orders/${id}/cancel`);
+
 // ─── Member ───────────────────────────────────────────────────────────────────
 
 export const memberGetDashboard = () => axiosClient.get("/member/dashboard");

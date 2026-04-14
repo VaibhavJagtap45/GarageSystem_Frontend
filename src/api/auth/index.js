@@ -1,40 +1,36 @@
 import { AUTH_ENDPOINTS } from "../../utils/constants";
 import axiosClient from "../axios";
-const { REQUEST_OTP, VERIFY_OTP, UPDATE_PROFILE, RESEND_OTP, UPLOAD_IMAGE } = AUTH_ENDPOINTS;
 
-export const requestOtp = async (data) => {
-  try {
-    const response = await axiosClient.post(REQUEST_OTP, data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-export const resendOtp = async (data) => {
-  try {
-    const response = await axiosClient.post(RESEND_OTP, data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+const {
+  REGISTER,
+  LOGIN,
+  CHANGE_PASSWORD,
+  UPDATE_PROFILE,
+  UPLOAD_IMAGE,
+} = AUTH_ENDPOINTS;
+
+// ── Auth ──────────────────────────────────────────────────────────
+
+export const register = async (data) => {
+  const response = await axiosClient.post(REGISTER, data);
+  return response.data;
 };
 
-export const verifyOtp = async (data) => {
-  try {
-    const response = await axiosClient.post(VERIFY_OTP, data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+export const login = async (data) => {
+  const response = await axiosClient.post(LOGIN, data);
+  return response.data;
 };
+
+export const changePassword = async (data) => {
+  const response = await axiosClient.patch(CHANGE_PASSWORD, data);
+  return response.data;
+};
+
+// ── Profile & Garage ──────────────────────────────────────────────
 
 export const updateProfile = async (data) => {
-  try {
-    const response = await axiosClient.post(UPDATE_PROFILE, data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await axiosClient.post(UPDATE_PROFILE, data);
+  return response.data;
 };
 
 export const uploadImage = async (uri) => {
