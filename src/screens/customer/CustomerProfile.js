@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import Toast from "react-native-toast-message";
 import {
@@ -30,7 +30,9 @@ import {
   customerAddVehicle,
 } from "../../api/portal";
 import axiosClient from "../../api/axios";
+import Empty from "../../components/portal/Empty";
 import M from "../../components/portal/modalStyles";
+import SectionHeader from "../../components/portal/SectionHeader";
 import useLogout from "../../hooks/useLogout";
 
 // ─── Picker Sheet ─────────────────────────────────────────────────────────────
@@ -268,6 +270,7 @@ const fr = StyleSheet.create({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function CustomerProfile() {
   const doLogout = useLogout();
+  const navigation = useNavigation();
   const tabBarH = useBottomTabBarHeight();
 
   const [user, setUser] = useState(null);
@@ -281,6 +284,7 @@ export default function CustomerProfile() {
     vehicleModel: "",
     vehicleRegisterNo: "",
     vehicleVariant: "",
+    vehicleKmDriven: "",
   });
   const [addingV, setAddingV] = useState(false);
 
@@ -364,9 +368,28 @@ export default function CustomerProfile() {
       });
       return;
     }
+    if (vf.vehicleKmDriven !== "" && vf.vehicleKmDriven != null) {
+      const km = Number(vf.vehicleKmDriven);
+      if (!Number.isFinite(km) || km < 0 || !Number.isInteger(km)) {
+        Toast.show({
+          type: "error",
+          text1: "Km Driven must be a valid non-negative number.",
+        });
+        return;
+      }
+    }
     setAddingV(true);
     try {
-      await customerAddVehicle(vf);
+      const payload = {
+        vehicleBrand: vf.vehicleBrand,
+        vehicleModel: vf.vehicleModel,
+        vehicleRegisterNo: vf.vehicleRegisterNo,
+        vehicleVariant: vf.vehicleVariant,
+        ...(vf.vehicleKmDriven !== "" && vf.vehicleKmDriven != null && {
+          vehicleKmDriven: Number(vf.vehicleKmDriven),
+        }),
+      };
+      await customerAddVehicle(payload);
       await load();
       setVModal(false);
       setVf({
@@ -374,6 +397,7 @@ export default function CustomerProfile() {
         vehicleModel: "",
         vehicleRegisterNo: "",
         vehicleVariant: "",
+        vehicleKmDriven: "",
       });
       setModelOptions([]);
       Toast.show({ type: "success", text1: "Vehicle added!" });
@@ -397,6 +421,8 @@ export default function CustomerProfile() {
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase())
     .join("");
+  const profileFilled = [form.fullName, user.phoneNo, form.address, form.state].filter(Boolean).length;
+  const profileCompletion = Math.round((profileFilled / 4) * 100);
 
   return (
     <SafeAreaView style={s.safe} edges={["top"]}>
@@ -444,9 +470,29 @@ export default function CustomerProfile() {
           ) : null}
         </LinearGradient>
 
+        <View style={s.summaryCard}>
+          <View style={s.summaryItem}>
+            <Text style={s.summaryValue}>{vehicles.length}</Text>
+            <Text style={s.summaryLabel}>Vehicles</Text>
+          </View>
+          <View style={s.summaryDivider} />
+          <View style={s.summaryItem}>
+            <Text style={s.summaryValue}>{profileCompletion}%</Text>
+            <Text style={s.summaryLabel}>Profile</Text>
+          </View>
+          <View style={s.summaryDivider} />
+          <View style={s.summaryItem}>
+            <Text style={s.summaryValue}>{editing ? "Live" : "Ready"}</Text>
+            <Text style={s.summaryLabel}>Status</Text>
+          </View>
+        </View>
+
         {/* ── Profile fields ── */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Personal Info</Text>
+          <SectionHeader
+            title="Personal Info"
+            subtitle={editing ? "Editing is enabled. Update the fields below and save when ready." : "Your customer account details and contact information."}
+          />
           <View style={s.card}>
             <FieldRow
               icon="person-outline"
@@ -508,20 +554,21 @@ export default function CustomerProfile() {
 
         {/* ── My Vehicles ── */}
         <View style={[s.section, { marginTop: editing ? SIZES.sm : SIZES.lg }]}>
-          <View style={s.sectionRow}>
-            <Text style={s.sectionTitle}>My Vehicles</Text>
-            <TouchableOpacity style={s.addBtn} onPress={() => setVModal(true)}>
-              <Ionicons name="add" size={14} color={COLORS.white} />
-              <Text style={s.addTxt}>Add</Text>
-            </TouchableOpacity>
-          </View>
+          <SectionHeader
+            title="My Vehicles"
+            subtitle={vehicles.length > 0 ? `${vehicles.length} registered vehicle${vehicles.length === 1 ? "" : "s"}` : "Add a vehicle to speed up service booking"}
+            actionLabel="Add"
+            actionIcon="add"
+            onPress={() => setVModal(true)}
+          />
           {vehicles.length === 0 ? (
-            <View style={s.emptyBox}>
-              <Ionicons name="car-outline" size={28} color={COLORS.textMuted} />
-              <Text style={s.emptyTxt}>
-                No vehicles yet. Add one to book services.
-              </Text>
-            </View>
+            <Empty
+              icon="car-outline"
+              title="No vehicles yet"
+              sub="Add your vehicle details to make booking and order tracking easier."
+              actionLabel="Add Vehicle"
+              onAction={() => setVModal(true)}
+            />
           ) : (
             vehicles.map((v) => (
               <View key={v._id} style={s.vcard}>
@@ -540,6 +587,11 @@ export default function CustomerProfile() {
                   {v.vehicleVariant ? (
                     <Text style={s.vvariant}>{v.vehicleVariant}</Text>
                   ) : null}
+                  {v.vehicleKmDriven != null ? (
+                    <Text style={s.vvariant}>
+                      {new Intl.NumberFormat("en-IN").format(v.vehicleKmDriven)} km
+                    </Text>
+                  ) : null}
                 </View>
                 <Ionicons
                   name="chevron-forward"
@@ -551,8 +603,27 @@ export default function CustomerProfile() {
           )}
         </View>
 
-        {/* ── Logout ── */}
-        <View style={[s.section, { marginTop: SIZES.sm }]}>
+        {/* ── Account & Security ── */}
+        <View style={[s.section, { marginTop: SIZES.sm, gap: SIZES.sm }]}>
+          <TouchableOpacity
+            style={s.actionBtn}
+            onPress={() => navigation.navigate("ChangePassword")}
+            activeOpacity={0.8}
+          >
+            <View style={s.actionIcon}>
+              <Ionicons name="key-outline" size={18} color="#3b82f6" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.actionTxt}>Change Password</Text>
+              <Text style={s.actionSub}>Update your account password</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={COLORS.textMuted}
+            />
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={s.logoutBtn}
             onPress={doLogout}
@@ -673,12 +744,29 @@ export default function CustomerProfile() {
             {/* Variant */}
             <Text style={M.label}>Variant</Text>
             <TextInput
-              style={[M.fieldInput, { marginBottom: SIZES.lg }]}
+              style={[M.fieldInput, { marginBottom: SIZES.sm }]}
               placeholder="optional — e.g. Drum, Disc, CBS"
               placeholderTextColor={COLORS.textMuted}
               value={vf.vehicleVariant}
               onChangeText={(v) => setVf((p) => ({ ...p, vehicleVariant: v }))}
               autoCapitalize="words"
+            />
+
+            {/* Km Driven */}
+            <Text style={M.label}>Km Driven</Text>
+            <TextInput
+              style={[M.fieldInput, { marginBottom: SIZES.lg }]}
+              placeholder="optional — e.g. 12500"
+              placeholderTextColor={COLORS.textMuted}
+              value={vf.vehicleKmDriven}
+              onChangeText={(v) =>
+                setVf((p) => ({
+                  ...p,
+                  vehicleKmDriven: v.replace(/[^0-9]/g, ""),
+                }))
+              }
+              keyboardType="numeric"
+              maxLength={7}
             />
 
             <View style={M.btns}>
@@ -809,6 +897,41 @@ const s = StyleSheet.create({
     fontSize: SIZES.textSm,
     color: "rgba(255,255,255,0.85)",
   },
+  summaryCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: SIZES.screenPadding,
+    marginTop: -SIZES.xl,
+    paddingHorizontal: SIZES.md,
+    paddingVertical: SIZES.md,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    ...SHADOWS.md,
+  },
+  summaryItem: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+  },
+  summaryValue: {
+    fontFamily: FONTS.extrabold,
+    fontSize: SIZES.textLg,
+    color: "#2563eb",
+  },
+  summaryLabel: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+  },
+  summaryDivider: {
+    width: 1,
+    alignSelf: "stretch",
+    backgroundColor: COLORS.borderLight,
+    marginHorizontal: SIZES.sm,
+  },
 
   // Sections
   section: { marginHorizontal: SIZES.screenPadding, marginTop: SIZES.lg },
@@ -826,7 +949,7 @@ const s = StyleSheet.create({
   },
   card: {
     backgroundColor: COLORS.bgCard,
-    borderRadius: SIZES.radiusMd,
+    borderRadius: SIZES.radiusLg,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
     overflow: "hidden",
@@ -881,7 +1004,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: SIZES.sm,
     backgroundColor: COLORS.bgCard,
-    borderRadius: SIZES.radiusMd,
+    borderRadius: SIZES.radiusLg,
     padding: SIZES.md,
     marginBottom: SIZES.sm,
     borderWidth: 1,
@@ -913,13 +1036,45 @@ const s = StyleSheet.create({
     color: COLORS.textMuted,
   },
 
+  // Account action row (Change Password)
+  actionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SIZES.sm,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    padding: SIZES.md,
+    ...SHADOWS.sm,
+  },
+  actionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: SIZES.radiusSm,
+    backgroundColor: "#dbeafe",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionTxt: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textBase,
+    color: COLORS.textPrimary,
+  },
+  actionSub: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+
   // Logout
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: SIZES.sm,
     backgroundColor: COLORS.bgCard,
-    borderRadius: SIZES.radiusMd,
+    borderRadius: SIZES.radiusLg,
     borderWidth: 1,
     borderColor: COLORS.error + "30",
     padding: SIZES.md,

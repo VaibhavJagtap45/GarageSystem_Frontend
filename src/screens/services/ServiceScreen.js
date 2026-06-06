@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,9 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  Animated,
+  StatusBar,
 } from "react-native";
 import { usePreferences, useFontSizes } from "../../context/PreferencesContext";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -31,6 +34,7 @@ const QUICK_ACTIONS = [
     icon: "file-document-edit-outline",
     accent: COLORS.primary,
     accentSoft: COLORS.primaryLight,
+    gradColors: [COLORS.primaryDark, COLORS.primary],
     onPress: (nav) => nav.navigate("CustomerRepairOrder"),
   },
   {
@@ -40,6 +44,7 @@ const QUICK_ACTIONS = [
     icon: "cart-plus",
     accent: COLORS.secondary,
     accentSoft: "#FFFBEB",
+    gradColors: ["#BA7517", "#D9940A"],
     onPress: (nav) => nav.navigate("CounterSale"),
   },
 ];
@@ -83,57 +88,170 @@ const STATUS_CARD_TEMPLATES = [
   },
 ];
 
+function formatTodayLabel() {
+  const d = new Date();
+  return d.toLocaleDateString("en-US", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 function SectionHeader({ title, actionLabel, onAction, fs }) {
   return (
     <View style={s.sectionHeader}>
       <Text style={[s.sectionTitle, { fontSize: fs.textMd }]}>{title}</Text>
       {actionLabel && (
-        <TouchableOpacity onPress={onAction} accessibilityRole="button">
+        <TouchableOpacity
+          onPress={onAction}
+          accessibilityRole="button"
+          style={s.sectionActionBtn}
+          activeOpacity={0.7}
+        >
           <Text style={[s.sectionAction, { fontSize: fs.textSm }]}>
             {actionLabel}
           </Text>
+          <Ionicons name="chevron-forward" size={13} color={COLORS.primary} />
         </TouchableOpacity>
       )}
     </View>
   );
 }
 
-function ActionRow({ item, navigation, fs }) {
+function ActionRow({ item, navigation, fs, index }) {
+  const translateX = useRef(new Animated.Value(30)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const pressScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(translateX, {
+        toValue: 0,
+        duration: 300,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 300,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const handlePressIn = () =>
+    Animated.spring(pressScale, {
+      toValue: 0.98,
+      useNativeDriver: true,
+      speed: 30,
+      bounciness: 0,
+    }).start();
+
+  const handlePressOut = () =>
+    Animated.spring(pressScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 6,
+    }).start();
+
   return (
-    <TouchableOpacity
-      style={s.actionRow}
-      activeOpacity={0.8}
-      onPress={() => item.onPress(navigation)}
-      accessibilityLabel={item.title}
-      accessibilityRole="button"
+    <Animated.View
+      style={{ transform: [{ translateX }, { scale: pressScale }], opacity }}
     >
-      <View style={[s.actionIcon, { backgroundColor: item.accentSoft }]}>
-        <MaterialCommunityIcons
-          name={item.icon}
-          size={22}
-          color={item.accent}
-        />
-      </View>
-      <View style={s.actionContent}>
-        <Text style={[s.actionTitle, { fontSize: fs.textBase }]}>
-          {item.title}
-        </Text>
-        <Text style={[s.actionSub, { fontSize: fs.textSm }]}>
-          {item.subtitle}
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-    </TouchableOpacity>
+      <TouchableOpacity
+        style={s.actionRow}
+        activeOpacity={0.85}
+        onPress={() => item.onPress(navigation)}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        accessibilityLabel={item.title}
+        accessibilityRole="button"
+      >
+        <LinearGradient
+          colors={item.gradColors || [item.accent, item.accent]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.actionIconGrad}
+        >
+          <MaterialCommunityIcons
+            name={item.icon}
+            size={24}
+            color={COLORS.white}
+          />
+        </LinearGradient>
+        <View style={s.actionContent}>
+          <Text style={[s.actionTitle, { fontSize: fs.textBase }]}>
+            {item.title}
+          </Text>
+          <Text style={[s.actionSub, { fontSize: fs.textSm }]}>
+            {item.subtitle}
+          </Text>
+        </View>
+        <View style={[s.actionArrow, { backgroundColor: item.accentSoft }]}>
+          <Ionicons name="chevron-forward" size={16} color={item.accent} />
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
-function StatCard({ card, navigation, fs }) {
+function StatCard({ card, navigation, fs, index }) {
+  const scale = useRef(new Animated.Value(0.9)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const pressScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 12,
+        bounciness: 4,
+        delay: index * 60,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 300,
+        delay: index * 60,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const handlePressIn = () =>
+    Animated.spring(pressScale, {
+      toValue: 0.97,
+      useNativeDriver: true,
+      speed: 30,
+      bounciness: 0,
+    }).start();
+
+  const handlePressOut = () =>
+    Animated.spring(pressScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 6,
+    }).start();
+
   return (
-    <View style={s.statCard}>
+    <Animated.View
+      style={[
+        s.statCard,
+        {
+          transform: [{ scale: Animated.multiply(scale, pressScale) }],
+          opacity,
+        },
+      ]}
+    >
       <TouchableOpacity
         style={s.statInner}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
         onPress={() => card.onPress(navigation)}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         accessibilityLabel={card.title}
         accessibilityRole="button"
       >
@@ -141,44 +259,41 @@ function StatCard({ card, navigation, fs }) {
           <View style={[s.statIcon, { backgroundColor: card.accentSoft }]}>
             <MaterialCommunityIcons
               name={card.icon}
-              size={20}
+              size={22}
               color={card.accent}
             />
           </View>
-          <View
-            style={[
-              s.statBadge,
-              {
-                borderColor: `${card.accent}40`,
-                backgroundColor: card.accentSoft,
-              },
-            ]}
+          <Text
+            style={[s.statCount, { color: card.accent, fontSize: fs.textXl }]}
+            numberOfLines={1}
           >
-            <Text
-              style={[
-                s.statCount,
-                { color: card.accent, fontSize: fs.textBase },
-              ]}
-            >
-              {card.count}
-            </Text>
-          </View>
+            {card.count}
+          </Text>
         </View>
         <Text style={[s.statTitle, { fontSize: fs.textBase }]}>
           {card.title}
         </Text>
-        <Text style={[s.statSub, { fontSize: fs.textXs }]}>
+        <Text style={[s.statSub, { fontSize: fs.textXs }]} numberOfLines={1}>
           {card.subtitle}
         </Text>
         {card.helper ? (
-          <Text
-            style={[s.statHelper, { color: card.accent, fontSize: fs.textXs }]}
+          <View
+            style={[s.statHelperWrap, { backgroundColor: card.accentSoft }]}
           >
-            {card.helper}
-          </Text>
+            <Ionicons name="cash-outline" size={11} color={card.accent} />
+            <Text
+              style={[
+                s.statHelper,
+                { color: card.accent, fontSize: fs.textXs },
+              ]}
+              numberOfLines={1}
+            >
+              {card.helper}
+            </Text>
+          </View>
         ) : null}
       </TouchableOpacity>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -189,6 +304,37 @@ export default function ServiceScreen() {
   const { notify } = usePreferences();
   const fs = useFontSizes();
   const [stats, setStats] = useState(INITIAL_STATS);
+
+  const heroScale = useRef(new Animated.Value(0.95)).current;
+  const livePulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.spring(heroScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 10,
+      bounciness: 3,
+    }).start();
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(livePulse, {
+          toValue: 0.4,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(livePulse, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const todayLabel = formatTodayLabel();
 
   const fetchDashboardStats = useCallback(async () => {
     try {
@@ -232,7 +378,7 @@ export default function ServiceScreen() {
             : 0,
       });
     } catch {
-      // silently degrade — zeros remain on failure
+      // silently degrade
     }
   }, []);
 
@@ -255,6 +401,10 @@ export default function ServiceScreen() {
 
   return (
     <SafeAreaView style={s.safe} edges={["top"]}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={COLORS.primaryDark}
+      />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
@@ -262,37 +412,89 @@ export default function ServiceScreen() {
           { paddingBottom: Platform.OS === "ios" ? 120 : 140 },
         ]}
       >
-        <View style={s.header}>
-          <View>
-            <Text style={[s.greeting, { fontSize: fs.textSm }]}>Hello 👋</Text>
-            <Text style={[s.garageName, { fontSize: fs.textXl }]}>
-              Aapno Garage Workshop
-            </Text>
-          </View>
-          <View style={s.headerActions}>
-            <TouchableOpacity
-              style={s.notifBtn}
-              onPress={() => navigation.navigate("Calendar")}
-              accessibilityLabel="Calendar"
-              accessibilityRole="button"
-            >
-              <Ionicons
-                name="calendar-outline"
-                size={20}
-                color={COLORS.textPrimary}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
+        {/* ── Hero Header ──────────────────────────────────────── */}
+        <Animated.View style={{ transform: [{ scale: heroScale }] }}>
+          <LinearGradient
+            colors={[COLORS.primaryDark, COLORS.primary, "#34D399"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.hero}
+          >
+            {/* Decorative circles */}
+            <View
+              style={[
+                s.heroDeco,
+                { width: 160, height: 160, top: -50, right: -40 },
+              ]}
+            />
+            <View
+              style={[
+                s.heroDecoRing,
+                { width: 90, height: 90, top: 28, right: 40 },
+              ]}
+            />
+            <View
+              style={[
+                s.heroDeco,
+                { width: 80, height: 80, bottom: -10, left: -20 },
+              ]}
+            />
+
+            <View style={s.heroContent}>
+              <View style={s.heroLeft}>
+                <Text style={[s.greeting, { fontSize: fs.textSm }]}>
+                  Hello 👋
+                </Text>
+                <Text style={[s.garageName, { fontSize: fs.textXl }]}>
+                  Aapno Garage
+                </Text>
+                <Text style={s.heroTagline}>Smart Workshop Management</Text>
+
+                <View style={s.heroMetaRow}>
+                  <View style={s.heroPill}>
+                    <Ionicons
+                      name="calendar-clear-outline"
+                      size={11}
+                      color={COLORS.white}
+                    />
+                    <Text style={s.heroPillText}>{todayLabel}</Text>
+                  </View>
+                  <View style={s.heroPill}>
+                    <Animated.View
+                      style={[s.liveDot, { opacity: livePulse }]}
+                    />
+                    <Text style={s.heroPillText}>Live</Text>
+                  </View>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={s.calendarBtn}
+                onPress={() => navigation.navigate("Calendar")}
+                accessibilityLabel="Calendar"
+                accessibilityRole="button"
+                activeOpacity={0.85}
+              >
+                <View style={s.calendarBtnInner}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={COLORS.white}
+                  />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </Animated.View>
 
         <SectionHeader title="Quick Actions" fs={fs} />
         <View style={s.section}>
-          {QUICK_ACTIONS.map((item) => (
+          {QUICK_ACTIONS.map((item, i) => (
             <ActionRow
               key={item.id}
               item={item}
               navigation={navigation}
               fs={fs}
+              index={i}
             />
           ))}
         </View>
@@ -304,34 +506,38 @@ export default function ServiceScreen() {
           fs={fs}
         />
         <View style={s.statsGrid}>
-          {statusCards.map((card) => (
+          {statusCards.map((card, i) => (
             <StatCard
               key={card.id}
               card={card}
               navigation={navigation}
               fs={fs}
+              index={i}
             />
           ))}
         </View>
 
         <View style={s.section}>
           <TouchableOpacity
-            style={s.actionRow}
+            style={s.completedRow}
             activeOpacity={0.8}
             onPress={() =>
               navigation.navigate("Orders", { initialTab: "COMPLETED" })
             }
             accessibilityRole="button"
           >
-            <View
-              style={[s.actionIcon, { backgroundColor: COLORS.primaryLight }]}
+            <LinearGradient
+              colors={[COLORS.primary, "#34D399"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.completedIconGrad}
             >
               <MaterialCommunityIcons
                 name="check-decagram"
-                size={22}
-                color={COLORS.primary}
+                size={20}
+                color={COLORS.white}
               />
-            </View>
+            </LinearGradient>
             <View style={s.actionContent}>
               <Text style={[s.actionTitle, { fontSize: fs.textBase }]}>
                 Completed Orders
@@ -340,11 +546,15 @@ export default function ServiceScreen() {
                 View full order history
               </Text>
             </View>
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color={COLORS.textMuted}
-            />
+            <View
+              style={[s.actionArrow, { backgroundColor: COLORS.primaryLight }]}
+            >
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={COLORS.primary}
+              />
+            </View>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -355,91 +565,132 @@ export default function ServiceScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   scroll: { gap: 0 },
-  header: {
+
+  // ── Hero ───────────────────────────────────────────────────────
+  hero: {
+    paddingHorizontal: SIZES.screenPadding,
+    paddingTop: SIZES.lg,
+    paddingBottom: SIZES.xl,
+    position: "relative",
+    overflow: "hidden",
+    borderBottomLeftRadius: SIZES.radiusXl,
+    borderBottomRightRadius: SIZES.radiusXl,
+  },
+  heroDeco: {
+    position: "absolute",
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  heroDecoRing: {
+    position: "absolute",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+  },
+  heroContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: SIZES.screenPadding,
-    paddingTop: SIZES.md,
-    paddingBottom: SIZES.lg,
   },
+  heroLeft: { flex: 1 },
   greeting: {
     fontFamily: FONTS.regular,
     fontSize: SIZES.textSm,
-    color: COLORS.textMuted,
+    color: "rgba(255,255,255,0.8)",
   },
   garageName: {
-    fontFamily: FONTS.bold,
+    fontFamily: FONTS.extrabold,
     fontSize: SIZES.textXl,
-    color: COLORS.textPrimary,
+    color: COLORS.white,
     letterSpacing: -0.3,
     marginTop: 2,
   },
-  headerActions: {
+  heroTagline: {
+    fontFamily: FONTS.medium,
+    fontSize: SIZES.textXs,
+    color: "rgba(255,255,255,0.65)",
+    marginTop: 3,
+  },
+  heroMetaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: SIZES.sm + 2,
+  },
+  heroPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: SIZES.sm,
-  },
-  notifBtn: {
-    width: 40,
-    height: 40,
+    gap: 5,
+    paddingHorizontal: SIZES.sm,
+    paddingVertical: 4,
     borderRadius: SIZES.radiusFull,
-    backgroundColor: COLORS.bgCard,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  heroPillText: {
+    fontFamily: FONTS.semibold,
+    fontSize: 11,
+    color: COLORS.white,
+    letterSpacing: 0.2,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#34D399",
+  },
+  calendarBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.28)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    ...SHADOWS.sm,
+    padding: 3,
   },
-  trialBanner: {
-    marginHorizontal: SIZES.screenPadding,
-    marginBottom: SIZES.lg,
-    flexDirection: "row",
+  calendarBtnInner: {
+    flex: 1,
+    width: "100%",
+    borderRadius: 999,
     alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: COLORS.errorLight,
-    borderRadius: SIZES.radiusMd,
-    borderWidth: 1,
-    borderColor: `${COLORS.error}30`,
-    paddingHorizontal: SIZES.md,
-    paddingVertical: SIZES.sm + 2,
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
-  trialLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
-  trialText: {
-    fontFamily: FONTS.medium,
-    fontSize: SIZES.textSm,
-    color: COLORS.error,
-  },
-  buyBtn: {
-    paddingHorizontal: SIZES.md,
-    paddingVertical: 6,
-    borderRadius: SIZES.radiusFull,
-    backgroundColor: COLORS.error,
-  },
-  buyText: {
-    fontFamily: FONTS.semibold,
-    fontSize: SIZES.textXs,
-    color: COLORS.white,
-  },
+
+  // ── Section Header ─────────────────────────────────────────────
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: SIZES.screenPadding,
     marginBottom: SIZES.sm,
-    marginTop: SIZES.sm,
+    marginTop: SIZES.md,
   },
   sectionTitle: {
-    fontFamily: FONTS.semibold,
+    fontFamily: FONTS.bold,
     fontSize: SIZES.textMd,
     color: COLORS.textPrimary,
-    letterSpacing: -0.1,
+    letterSpacing: -0.2,
+  },
+  sectionActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: SIZES.sm + 2,
+    paddingVertical: 5,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.primaryLight,
   },
   sectionAction: {
-    fontFamily: FONTS.medium,
+    fontFamily: FONTS.semibold,
     fontSize: SIZES.textSm,
     color: COLORS.primary,
   },
+
+  // ── Section Card ───────────────────────────────────────────────
   section: {
     marginHorizontal: SIZES.screenPadding,
     borderRadius: SIZES.radiusLg,
@@ -450,6 +701,8 @@ const s = StyleSheet.create({
     marginBottom: SIZES.md,
     ...SHADOWS.sm,
   },
+
+  // ── Action Row ─────────────────────────────────────────────────
   actionRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -459,18 +712,20 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
   },
-  actionIcon: {
-    width: 44,
-    height: 44,
+  actionIconGrad: {
+    width: 48,
+    height: 48,
     borderRadius: SIZES.radiusMd,
     alignItems: "center",
     justifyContent: "center",
+    ...SHADOWS.md,
   },
   actionContent: { flex: 1 },
   actionTitle: {
     fontFamily: FONTS.semibold,
     fontSize: SIZES.textBase,
     color: COLORS.textPrimary,
+    letterSpacing: -0.1,
   },
   actionSub: {
     fontFamily: FONTS.regular,
@@ -478,6 +733,32 @@ const s = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 2,
   },
+  actionArrow: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // ── Completed row ──────────────────────────────────────────────
+  completedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: SIZES.md,
+    paddingVertical: SIZES.md,
+    gap: SIZES.md,
+  },
+  completedIconGrad: {
+    width: 48,
+    height: 48,
+    borderRadius: SIZES.radiusMd,
+    alignItems: "center",
+    justifyContent: "center",
+    ...SHADOWS.md,
+  },
+
+  // ── Stats Grid ─────────────────────────────────────────────────
   statsGrid: {
     marginHorizontal: SIZES.screenPadding,
     flexDirection: "row",
@@ -495,7 +776,7 @@ const s = StyleSheet.create({
     ...SHADOWS.sm,
     overflow: "hidden",
   },
-  statInner: { padding: SIZES.md },
+  statInner: { padding: SIZES.md, minHeight: 130 },
   statTop: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -503,25 +784,22 @@ const s = StyleSheet.create({
     marginBottom: SIZES.sm,
   },
   statIcon: {
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
     borderRadius: SIZES.radiusMd,
     alignItems: "center",
     justifyContent: "center",
   },
-  statBadge: {
-    minWidth: 32,
-    paddingHorizontal: SIZES.sm,
-    paddingVertical: 3,
-    borderRadius: SIZES.radiusFull,
-    borderWidth: 1,
-    alignItems: "center",
+  statCount: {
+    fontFamily: FONTS.extrabold,
+    fontSize: SIZES.textXl,
+    letterSpacing: -0.5,
   },
-  statCount: { fontFamily: FONTS.bold, fontSize: SIZES.textBase },
   statTitle: {
     fontFamily: FONTS.semibold,
     fontSize: SIZES.textBase,
     color: COLORS.textPrimary,
+    letterSpacing: -0.1,
   },
   statSub: {
     fontFamily: FONTS.regular,
@@ -529,9 +807,19 @@ const s = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 2,
   },
+  statHelperWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 4,
+    marginTop: SIZES.sm,
+    paddingHorizontal: SIZES.sm + 2,
+    paddingVertical: 4,
+    borderRadius: SIZES.radiusFull,
+    maxWidth: "100%",
+  },
   statHelper: {
     fontFamily: FONTS.semibold,
     fontSize: SIZES.textXs,
-    marginTop: SIZES.xs,
   },
 });

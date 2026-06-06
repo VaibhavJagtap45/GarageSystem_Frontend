@@ -13,6 +13,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -105,29 +106,41 @@ const ACTION_BUTTONS = [
   {
     id: "purchase",
     label: "Purchase Order",
-    icon: "add-circle",
-    bg: COLORS.primaryDark,
+    sublabel: "Restock from suppliers",
+    icon: "clipboard-text-outline",
+    accent: COLORS.primary,
+    accentSoft: COLORS.primaryLight,
+    gradColors: [COLORS.primaryDark, COLORS.primary],
     onPress: (nav) => nav.navigate("PurchaseOrder"),
   },
   {
     id: "alerts",
-    label: "View Alerts",
-    icon: "search",
-    bg: COLORS.error,
+    label: "Inventory Alerts",
+    sublabel: "Low stock & reorders",
+    icon: "alert-decagram-outline",
+    accent: COLORS.error,
+    accentSoft: COLORS.errorLight,
+    gradColors: ["#C53030", COLORS.error],
     onPress: (nav) => nav.navigate("InventoryAlerts"),
   },
   {
     id: "counter",
     label: "Counter Sale",
-    icon: "trending-up",
-    bg: COLORS.primaryDark,
+    sublabel: "Walk-in parts billing",
+    icon: "cart-outline",
+    accent: COLORS.secondary,
+    accentSoft: "#FFFBEB",
+    gradColors: ["#BA7517", "#D9940A"],
     onPress: (nav) => nav.navigate("PartsCounterSale"),
   },
   {
     id: "stockin",
     label: "Stock In",
-    icon: "bag",
-    bg: COLORS.primaryDark,
+    sublabel: "Receive inventory",
+    icon: "package-variant-closed-plus",
+    accent: COLORS.primary,
+    accentSoft: COLORS.primaryLight,
+    gradColors: [COLORS.primary, "#34D399"],
     onPress: (nav) => nav.navigate("StockIn"),
   },
 ];
@@ -153,7 +166,15 @@ function RowField({ children }) {
 
 // ─── Multi-select modal (brands / models) ──────────────────────────────────────
 
-function MultiSelectModal({ visible, title, options, selected, onConfirm, onClose, loading }) {
+function MultiSelectModal({
+  visible,
+  title,
+  options,
+  selected,
+  onConfirm,
+  onClose,
+  loading,
+}) {
   const [local, setLocal] = useState([]);
 
   useEffect(() => {
@@ -205,7 +226,11 @@ function MultiSelectModal({ visible, title, options, selected, onConfirm, onClos
                     {item}
                   </Text>
                   {sel && (
-                    <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color={COLORS.primary}
+                    />
                   )}
                 </TouchableOpacity>
               );
@@ -251,7 +276,10 @@ function ApplicabilitySection({ form, setField }) {
 
   const openModels = async () => {
     if (!form.applicableBrands.length) {
-      Alert.alert("Select brands first", "Choose at least one brand before picking models.");
+      Alert.alert(
+        "Select brands first",
+        "Choose at least one brand before picking models.",
+      );
       return;
     }
     setModelsLoading(true);
@@ -295,7 +323,11 @@ function ApplicabilitySection({ form, setField }) {
                   </Text>
                 </View>
               )}
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={COLORS.textMuted}
+              />
             </View>
           </TouchableOpacity>
           <View style={styles.divider} />
@@ -313,7 +345,11 @@ function ApplicabilitySection({ form, setField }) {
                   </Text>
                 </View>
               )}
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={COLORS.textMuted}
+              />
             </View>
           </TouchableOpacity>
         </View>
@@ -489,15 +525,20 @@ function PartFormModal({ visible, onClose, onSave, saving, editItem }) {
       setForm({
         name: editItem.name || "",
         mrp: editItem.mrp != null ? String(editItem.mrp) : "",
-        purchasePrice: editItem.purchasePrice != null ? String(editItem.purchasePrice) : "",
+        purchasePrice:
+          editItem.purchasePrice != null ? String(editItem.purchasePrice) : "",
         no: editItem.no || "",
         category: editItem.category || null,
         manufacturer: editItem.manufacturer || "",
         unit: editItem.unit || "pcs",
         description: editItem.description || "",
-        taxPercent: editItem.taxPercent != null ? String(editItem.taxPercent) : "0",
+        taxPercent:
+          editItem.taxPercent != null ? String(editItem.taxPercent) : "0",
         stock: editItem.stock != null ? String(editItem.stock) : "0",
-        minimumStockLevel: editItem.minimumStockLevel != null ? String(editItem.minimumStockLevel) : "5",
+        minimumStockLevel:
+          editItem.minimumStockLevel != null
+            ? String(editItem.minimumStockLevel)
+            : "5",
         manageInventory: editItem.manageInventory ?? false,
         applicability: editItem.applicability || "generic",
         applicableBrands: editItem.applicableBrands || [],
@@ -537,8 +578,10 @@ function PartFormModal({ visible, onClose, onSave, saving, editItem }) {
       minimumStockLevel: parseInt(form.minimumStockLevel, 10) || 5,
       manageInventory: form.manageInventory,
       applicability: form.applicability,
-      applicableBrands: form.applicability === "specific" ? form.applicableBrands : [],
-      applicableModels: form.applicability === "specific" ? form.applicableModels : [],
+      applicableBrands:
+        form.applicability === "specific" ? form.applicableBrands : [],
+      applicableModels:
+        form.applicability === "specific" ? form.applicableModels : [],
     };
 
     onSave(payload);
@@ -590,7 +633,8 @@ function PartFormModal({ visible, onClose, onSave, saving, editItem }) {
 // ─── Part row ──────────────────────────────────────────────────────────────────
 
 function PartRow({ item, onEdit, onDelete }) {
-  const lowStock = item.manageInventory && item.stock <= (item.minimumStockLevel ?? 5);
+  const lowStock =
+    item.manageInventory && item.stock <= (item.minimumStockLevel ?? 5);
 
   return (
     <TouchableOpacity
@@ -599,8 +643,16 @@ function PartRow({ item, onEdit, onDelete }) {
       onPress={() => onEdit(item)}
       onLongPress={() => onDelete(item)}
     >
+      <View style={styles.rowAvatar}>
+        <MaterialCommunityIcons
+          name="cog-outline"
+          size={20}
+          color={COLORS.primary}
+        />
+      </View>
+
       <View style={styles.rowMain}>
-        <Text style={styles.rowNo}>{item.no || "—"}</Text>
+        {!!item.no && <Text style={styles.rowNo}>#{item.no}</Text>}
         <Text style={styles.rowName} numberOfLines={2}>
           {item.name}
         </Text>
@@ -620,11 +672,34 @@ function PartRow({ item, onEdit, onDelete }) {
       <View style={styles.partRight}>
         <Text style={styles.rowMrp}>{item.mrp > 0 ? `₹${item.mrp}` : "—"}</Text>
         {item.manageInventory && (
-          <Badge
-            label={`Qty ${item.stock}`}
-            variant={lowStock ? "error" : "success"}
-            size="sm"
-          />
+          <View
+            style={[
+              styles.stockPill,
+              {
+                backgroundColor: lowStock
+                  ? COLORS.errorLight
+                  : COLORS.primaryLight,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.stockDot,
+                {
+                  backgroundColor: lowStock ? COLORS.error : COLORS.primary,
+                },
+              ]}
+            />
+            <Text
+              style={[
+                styles.stockPillText,
+                { color: lowStock ? COLORS.error : COLORS.primary },
+              ]}
+              numberOfLines={1}
+            >
+              Qty {item.stock}
+            </Text>
+          </View>
         )}
       </View>
 
@@ -634,7 +709,7 @@ function PartRow({ item, onEdit, onDelete }) {
         activeOpacity={0.7}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Ionicons name="create-outline" size={18} color={COLORS.textMuted} />
+        <Ionicons name="create-outline" size={16} color={COLORS.primary} />
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -656,7 +731,11 @@ export default function PartsScreen() {
   const [search, setSearch] = useState("");
   const [parts, setParts] = useState([]);
   const [loadingParts, setLoadingParts] = useState(false);
-  const [stats, setStats] = useState({ totalParts: 0, totalStock: 0, totalStockValue: 0 });
+  const [stats, setStats] = useState({
+    totalParts: 0,
+    totalStock: 0,
+    totalStockValue: 0,
+  });
 
   // form modal
   const [showForm, setShowForm] = useState(false);
@@ -731,7 +810,11 @@ export default function PartsScreen() {
       setUploading(true);
 
       const formData = new FormData();
-      formData.append("file", { uri: file.uri, name: file.name, type: file.mimeType || "text/csv" });
+      formData.append("file", {
+        uri: file.uri,
+        name: file.name,
+        type: file.mimeType || "text/csv",
+      });
       formData.append("itemType", "part");
 
       const res = await axiosClient.post(
@@ -749,7 +832,10 @@ export default function PartsScreen() {
       loadParts("");
       loadStats();
     } catch (err) {
-      Alert.alert("Upload Failed", err.displayMessage || "Could not upload file.");
+      Alert.alert(
+        "Upload Failed",
+        err.displayMessage || "Could not upload file.",
+      );
     } finally {
       setUploading(false);
     }
@@ -813,7 +899,10 @@ export default function PartsScreen() {
       <TouchableOpacity
         style={styles.iconBtn}
         activeOpacity={0.8}
-        onPress={() => { loadParts(search.trim()); loadStats(); }}
+        onPress={() => {
+          loadParts(search.trim());
+          loadStats();
+        }}
       >
         <Ionicons name="refresh" size={20} color={COLORS.textPrimary} />
       </TouchableOpacity>
@@ -834,12 +923,30 @@ export default function PartsScreen() {
         {ACTION_BUTTONS.map((btn) => (
           <TouchableOpacity
             key={btn.id}
-            style={[styles.actionBtn, { backgroundColor: btn.bg }]}
+            style={styles.actionTile}
             activeOpacity={0.85}
             onPress={() => btn.onPress(navigation)}
           >
-            <Ionicons name={btn.icon} size={16} color={COLORS.white} />
-            <Text style={styles.actionBtnText}>{btn.label}</Text>
+            <LinearGradient
+              colors={btn.gradColors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.actionTileIcon}
+            >
+              <MaterialCommunityIcons
+                name={btn.icon}
+                size={20}
+                color={COLORS.white}
+              />
+            </LinearGradient>
+            <View style={styles.actionTileContent}>
+              <Text style={styles.actionTileTitle} numberOfLines={1}>
+                {btn.label}
+              </Text>
+              <Text style={styles.actionTileSub} numberOfLines={1}>
+                {btn.sublabel}
+              </Text>
+            </View>
           </TouchableOpacity>
         ))}
       </View>
@@ -864,7 +971,11 @@ export default function PartsScreen() {
           {uploading ? (
             <ActivityIndicator size="small" color={COLORS.primary} />
           ) : (
-            <MaterialCommunityIcons name="cloud-upload" size={16} color={COLORS.primary} />
+            <MaterialCommunityIcons
+              name="cloud-upload"
+              size={16}
+              color={COLORS.primary}
+            />
           )}
           <Text style={styles.uploadText}>
             {uploading ? "Uploading…" : "Upload CSV"}
@@ -886,8 +997,12 @@ export default function PartsScreen() {
       {/* Column Headers */}
       <View style={styles.tableHeader}>
         <Text style={[styles.colHead, { flex: 3 }]}>(No.) Name</Text>
-        <Text style={[styles.colHead, { width: 80, textAlign: "right" }]}>MRP</Text>
-        <Text style={[styles.colHead, { width: 44, textAlign: "right" }]}>Edit</Text>
+        <Text style={[styles.colHead, { width: 80, textAlign: "right" }]}>
+          MRP
+        </Text>
+        <Text style={[styles.colHead, { width: 44, textAlign: "right" }]}>
+          Edit
+        </Text>
       </View>
 
       {/* Parts List */}
@@ -909,22 +1024,34 @@ export default function PartsScreen() {
           )}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
-              <MaterialCommunityIcons name="package-variant" size={44} color={COLORS.textMuted} />
+              <View style={styles.emptyIconWrap}>
+                <MaterialCommunityIcons
+                  name="package-variant"
+                  size={36}
+                  color={COLORS.primary}
+                />
+              </View>
               <Text style={styles.emptyTitle}>
-                {search ? "No parts match your search" : "No parts in inventory"}
+                {search
+                  ? "No parts match your search"
+                  : "No parts in inventory"}
               </Text>
               <Text style={styles.emptyHint}>
-                {search ? "Try a different keyword" : 'Tap "+ Part" or upload a CSV to get started'}
+                {search
+                  ? "Try a different keyword"
+                  : 'Tap "+ Part" or upload a CSV to get started'}
               </Text>
             </View>
           }
-          contentContainerStyle={parts.length === 0 ? styles.emptyList : styles.listContent}
+          contentContainerStyle={
+            parts.length === 0 ? styles.emptyList : styles.listContent
+          }
           showsVerticalScrollIndicator={false}
         />
       )}
 
       {/* Stats Card */}
-      <View style={styles.statsCard}>
+      {/* <View style={styles.statsCard}>
         <StatItem label="Total Parts" value={stats.totalParts} />
         <View style={styles.statDivider} />
         <StatItem label="Total Stock" value={stats.totalStock} />
@@ -933,7 +1060,7 @@ export default function PartsScreen() {
           label="Stock Value"
           value={`₹${Number(stats.totalStockValue).toLocaleString("en-IN")}`}
         />
-      </View>
+      </View> */}
 
       {/* Add / Edit Part modal */}
       <PartFormModal
@@ -971,20 +1098,40 @@ const styles = StyleSheet.create({
     padding: SIZES.screenPadding,
     paddingBottom: SIZES.sm,
   },
-  actionBtn: {
+  actionTile: {
     flexBasis: "48%",
+    flexGrow: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 14,
-    borderRadius: SIZES.radiusSm,
+    gap: SIZES.sm + 2,
+    paddingVertical: SIZES.sm + 4,
+    paddingHorizontal: SIZES.sm + 4,
+    borderRadius: SIZES.radiusLg,
+    backgroundColor: COLORS.bgCard,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
     ...SHADOWS.sm,
   },
-  actionBtnText: {
+  actionTileIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: SIZES.radiusMd,
+    alignItems: "center",
+    justifyContent: "center",
+    ...SHADOWS.sm,
+  },
+  actionTileContent: { flex: 1, minWidth: 0 },
+  actionTileTitle: {
     fontFamily: FONTS.semibold,
     fontSize: SIZES.textSm,
-    color: COLORS.white,
+    color: COLORS.textPrimary,
+    letterSpacing: -0.1,
+  },
+  actionTileSub: {
+    fontFamily: FONTS.regular,
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 1,
   },
 
   searchInput: {
@@ -998,19 +1145,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: SIZES.screenPadding,
-    paddingBottom: SIZES.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
+    paddingBottom: SIZES.sm + 2,
+    gap: SIZES.sm,
   },
   uploadBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: `${COLORS.primary}40`,
     borderRadius: SIZES.radiusFull,
-    paddingVertical: 6,
-    paddingHorizontal: SIZES.sm + 4,
+    paddingVertical: 7,
+    paddingHorizontal: SIZES.sm + 6,
     backgroundColor: COLORS.primaryLight,
   },
   uploadText: {
@@ -1024,7 +1170,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: SIZES.screenPadding,
-    paddingVertical: SIZES.sm,
+    paddingVertical: SIZES.sm + 2,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
     backgroundColor: COLORS.bgSection,
@@ -1043,33 +1191,65 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: SIZES.screenPadding,
-    paddingVertical: SIZES.sm + 2,
+    paddingVertical: SIZES.sm + 4,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
     backgroundColor: COLORS.bgCard,
+    gap: SIZES.sm,
+  },
+  rowAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: SIZES.radiusMd,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
   },
   rowMain: { flex: 3, paddingRight: SIZES.sm, gap: 3 },
   rowNo: {
-    fontFamily: FONTS.medium,
+    fontFamily: FONTS.semibold,
     fontSize: SIZES.textXs,
     color: COLORS.textMuted,
+    letterSpacing: 0.3,
   },
   rowName: {
-    fontFamily: FONTS.regular,
+    fontFamily: FONTS.semibold,
     fontSize: SIZES.textBase,
     color: COLORS.textPrimary,
     lineHeight: 20,
+    letterSpacing: -0.1,
   },
-  badgeRow: { flexDirection: "row", gap: 4, flexWrap: "wrap", marginTop: 2 },
+  badgeRow: { flexDirection: "row", gap: 4, flexWrap: "wrap", marginTop: 4 },
   rowMrp: {
-    width: 60,
-    fontFamily: FONTS.semibold,
-    fontSize: SIZES.textSm,
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textBase,
     color: COLORS.textPrimary,
     textAlign: "right",
+    letterSpacing: -0.2,
   },
-  partRight: { width: 80, alignItems: "flex-end", gap: 4 },
-  editBtn: { width: 44, alignItems: "flex-end", paddingRight: 2 },
+  partRight: { width: 86, alignItems: "flex-end", gap: 5 },
+  stockPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: SIZES.sm,
+    paddingVertical: 3,
+    borderRadius: SIZES.radiusFull,
+  },
+  stockDot: { width: 6, height: 6, borderRadius: 3 },
+  stockPillText: {
+    fontFamily: FONTS.semibold,
+    fontSize: 11,
+    letterSpacing: 0.2,
+  },
+  editBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   // Empty / loader
   centered: {
@@ -1081,14 +1261,24 @@ const styles = StyleSheet.create({
   emptyWrap: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 52,
-    gap: 8,
+    paddingVertical: 56,
+    gap: 10,
+  },
+  emptyIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
   },
   emptyTitle: {
     fontFamily: FONTS.semibold,
-    fontSize: SIZES.textBase,
+    fontSize: SIZES.textMd,
     color: COLORS.textPrimary,
     textAlign: "center",
+    letterSpacing: -0.2,
   },
   emptyHint: {
     fontFamily: FONTS.regular,
@@ -1146,18 +1336,20 @@ const styles = StyleSheet.create({
     paddingVertical: SIZES.md,
   },
   modalTitle: {
-    fontFamily: FONTS.semibold,
+    fontFamily: FONTS.bold,
     fontSize: SIZES.textLg,
     color: COLORS.textPrimary,
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   modalClose: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     borderRadius: SIZES.radiusFull,
     backgroundColor: COLORS.bgSection,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   divider: { height: 1, backgroundColor: COLORS.borderLight },
   modalBody: { padding: SIZES.screenPadding, gap: SIZES.md, paddingBottom: 60 },

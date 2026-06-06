@@ -6,14 +6,16 @@ export default function LineRow({ name, amt }) {
     <View style={{
       flexDirection: "row",
       justifyContent: "space-between",
-      paddingVertical: 7,
+      alignItems: "center",
+      paddingVertical: 11,
       borderBottomWidth: 1,
       borderBottomColor: COLORS.borderLight,
+      gap: SIZES.sm,
     }}>
-      <Text style={{ fontFamily: FONTS.regular, fontSize: SIZES.textSm, color: COLORS.textSecondary, flex: 1 }}>
+      <Text style={{ fontFamily: FONTS.medium, fontSize: SIZES.textSm, color: COLORS.textSecondary, flex: 1, lineHeight: 18 }}>
         {name}
       </Text>
-      <Text style={{ fontFamily: FONTS.semibold, fontSize: SIZES.textSm, color: COLORS.textPrimary }}>
+      <Text style={{ fontFamily: FONTS.bold, fontSize: SIZES.textSm, color: COLORS.textPrimary }}>
         {amt}
       </Text>
     </View>

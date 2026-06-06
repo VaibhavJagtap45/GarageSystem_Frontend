@@ -10,16 +10,19 @@ import CustomerInvoices      from "../screens/customer/CustomerInvoices";
 import CustomerInvoiceDetail from "../screens/customer/CustomerInvoiceDetail";
 import CustomerProfile           from "../screens/customer/CustomerProfile";
 import CustomerBookingsScreen    from "../screens/customer/CustomerBookingsScreen";
+import CustomerCalendar          from "../screens/customer/CustomerCalendar";
+import ChangePasswordScreen      from "../screens/auth/OtpScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
 
-// ── Home stack: Home → Bookings
+// ── Home stack: Home → Bookings / Calendar
 function CHomeStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="CHomeMain"     component={CustomerHome} />
       <Stack.Screen name="CBookings"     component={CustomerBookingsScreen} />
+      <Stack.Screen name="CCalendar"     component={CustomerCalendar} />
     </Stack.Navigator>
   );
 }
@@ -45,12 +48,22 @@ function CInvoicesStack() {
   );
 }
 
+// ── Profile stack: Profile → ChangePassword
+function CProfileStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="CProfileMain"  component={CustomerProfile} />
+      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+    </Stack.Navigator>
+  );
+}
+
 const TABS = [
-  { label: "Home",     icon: "home-outline",     iconFilled: "home"      },
-  { label: "Services", icon: "construct-outline", iconFilled: "construct" },
-  { label: "Orders",   icon: "car-outline",       iconFilled: "car"       },
-  { label: "Invoices", icon: "receipt-outline",   iconFilled: "receipt"   },
-  { label: "Profile",  icon: "person-outline",    iconFilled: "person"    },
+  { label: "Home",     icon: "home-outline",           iconFilled: "home"          },
+  { label: "Services", icon: "construct-outline",      iconFilled: "construct"     },
+  { label: "Orders",   icon: "car-outline",            iconFilled: "car"           },
+  { label: "Invoices", icon: "receipt-outline",        iconFilled: "receipt"       },
+  { label: "Profile",  icon: "person-outline",         iconFilled: "person"        },
 ];
 
 export default function CustomerTabs() {
@@ -63,7 +76,7 @@ export default function CustomerTabs() {
       <Tab.Screen name="Services" component={CustomerServices} />
       <Tab.Screen name="Orders"   component={COrdersStack} />
       <Tab.Screen name="Invoices" component={CInvoicesStack} />
-      <Tab.Screen name="Profile"  component={CustomerProfile} />
+      <Tab.Screen name="Profile"  component={CProfileStack} />
     </Tab.Navigator>
   );
 }

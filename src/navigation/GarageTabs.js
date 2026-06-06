@@ -33,7 +33,6 @@ import AddCustomerScreen from "../screens/more/AddCustomerScreen";
 import MyVendorsScreen from "../screens/more/MyVendorsScreen";
 import VendorDetailScreen from "../screens/more/VendorDetailScreen";
 import SettingsScreen from "../screens/more/SettingsScreen";
-import GoogleCalendarSettingsScreen from "../screens/more/GoogleCalendarSettingsScreen";
 import OrderSearchScreen from "../screens/more/OrderSearchScreen";
 import ServiceFeedbackScreen from "../screens/more/ServiceFeedbackScreen";
 import InsuranceDueScreen from "../screens/more/InsuranceDueScreen";
@@ -64,6 +63,7 @@ import InventoryAgeingScreen from "../screens/more/InventoryAgeingScreen";
 import GstReportScreen from "../screens/more/GstReportScreen";
 import GeneralPreferencesScreen from "../screens/more/GeneralPreferencesScreen";
 import ChangePasswordScreen from "../screens/auth/OtpScreen";
+import InventoryTransfersScreen from "../screens/more/InventoryTransfersScreen";
 
 const Tab = createBottomTabNavigator();
 const ServiceStack = createNativeStackNavigator();
@@ -124,10 +124,6 @@ function MoreNav() {
       <MoreStack.Screen name="MyVendors" component={MyVendorsScreen} />
       <MoreStack.Screen name="VendorDetail" component={VendorDetailScreen} />
       <MoreStack.Screen name="Settings" component={SettingsScreen} />
-      <MoreStack.Screen
-        name="GoogleCalendarSettings"
-        component={GoogleCalendarSettingsScreen}
-      />
       <MoreStack.Screen name="OrderSearch" component={OrderSearchScreen} />
       <MoreStack.Screen
         name="ServiceFeedbacks"
@@ -208,6 +204,10 @@ function MoreNav() {
       <MoreStack.Screen
         name="GeneralPreferences"
         component={GeneralPreferencesScreen}
+      />
+      <MoreStack.Screen
+        name="InventoryTransfers"
+        component={InventoryTransfersScreen}
       />
       <MoreStack.Screen
         name="ChangePassword"

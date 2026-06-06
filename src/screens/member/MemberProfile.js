@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import Toast from "react-native-toast-message";
 import { COLORS, FONTS, SIZES, SHADOWS } from "../../utils/constants";
@@ -90,6 +90,7 @@ const fr = StyleSheet.create({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function MemberProfile() {
   const doLogout = useLogout();
+  const navigation = useNavigation();
   const tabBarH = useBottomTabBarHeight();
 
   const [user, setUser] = useState(null);
@@ -263,8 +264,32 @@ export default function MemberProfile() {
           </View>
         )}
 
-        {/* ── Logout ── */}
-        <View style={[s.section, { marginTop: editing ? SIZES.sm : SIZES.xl }]}>
+        {/* ── Account & Security ── */}
+        <View
+          style={[
+            s.section,
+            { marginTop: editing ? SIZES.sm : SIZES.xl, gap: SIZES.sm },
+          ]}
+        >
+          <TouchableOpacity
+            style={s.actionBtn}
+            onPress={() => navigation.navigate("ChangePassword")}
+            activeOpacity={0.8}
+          >
+            <View style={s.actionIcon}>
+              <Ionicons name="key-outline" size={18} color="#f59e0b" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.actionTxt}>Change Password</Text>
+              <Text style={s.actionSub}>Update your account password</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={COLORS.textMuted}
+            />
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={s.logoutBtn}
             onPress={doLogout}
@@ -390,6 +415,38 @@ const s = StyleSheet.create({
     fontFamily: FONTS.bold,
     fontSize: SIZES.textBase,
     color: COLORS.white,
+  },
+
+  // Account action row (Change Password)
+  actionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SIZES.sm,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    padding: SIZES.md,
+    ...SHADOWS.sm,
+  },
+  actionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: SIZES.radiusSm,
+    backgroundColor: "#fef3c7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionTxt: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textBase,
+    color: COLORS.textPrimary,
+  },
+  actionSub: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+    marginTop: 2,
   },
 
   // Logout

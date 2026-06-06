@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  StatusBar,
-} from "react-native";
+import { View, Text, ScrollView, StyleSheet, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TopNav from "../../components/ui/TopNav";
 import { COLORS, FONTS, SIZES } from "../../utils/constants";
@@ -13,7 +7,7 @@ import { COLORS, FONTS, SIZES } from "../../utils/constants";
 const SECTIONS = [
   {
     title: "OVERVIEW",
-    body: `Albos Pvt. Ltd. ("we", "us", "our") operates the ApnoGarage mobile application. This Privacy Policy informs you of our policies regarding the collection, use, and disclosure of personal data when you use our Service and the choices you have associated with that data.
+    body: `Aapno Pvt. Ltd. ("we", "us", "our") operates the Aapno Garage mobile application. This Privacy Policy informs you of our policies regarding the collection, use, and disclosure of personal data when you use our Service and the choices you have associated with that data.
 
 We use your data to provide and improve the Service. By using the Service, you agree to the collection and use of information in accordance with this policy.`,
   },
@@ -33,7 +27,7 @@ Usage Data: We may also collect information about how the Service is accessed an
   },
   {
     title: "SECTION 2 – HOW WE USE YOUR INFORMATION",
-    body: `Albos Pvt. Ltd. uses the collected data for various purposes:
+    body: `Aapno Pvt. Ltd. uses the collected data for various purposes:
 
 • To provide and maintain the Service
 • To notify you about changes to our Service
@@ -59,7 +53,7 @@ Your phone number is used solely for authentication and service-related communic
     title: "SECTION 4 – DATA RETENTION",
     body: `We will retain your Personal Data only for as long as is necessary for the purposes set out in this Privacy Policy. We will retain and use your Personal Data to the extent necessary to comply with our legal obligations, resolve disputes, and enforce our legal agreements and policies.
 
-Garage and account data is retained for the duration of your active subscription/use. Upon account deletion request, your data will be removed within 30 days, except where retention is required by applicable law.`,
+Garage and account data is retained for the duration of your account use. Upon account deletion request, your data will be removed within 30 days, except where retention is required by applicable law.`,
   },
   {
     title: "SECTION 5 – DATA TRANSFER",
@@ -71,10 +65,10 @@ Your consent to this Privacy Policy followed by your submission of such informat
   },
   {
     title: "SECTION 6 – DISCLOSURE OF DATA",
-    body: `Albos Pvt. Ltd. may disclose your Personal Data in the good faith belief that such action is necessary to:
+    body: `Aapno Pvt. Ltd. may disclose your Personal Data in the good faith belief that such action is necessary to:
 
 • Comply with a legal obligation
-• Protect and defend the rights or property of Albos Pvt. Ltd.
+• Protect and defend the rights or property of Aapno Pvt. Ltd.
 • Prevent or investigate possible wrongdoing in connection with the Service
 • Protect the personal safety of users of the Service or the public
 • Protect against legal liability
@@ -101,7 +95,7 @@ We implement the following security measures:
 • Right to Restrict Processing: You can ask us to limit how we use your data.
 • Right to Data Portability: You can request a copy of your data in a structured format.
 
-To exercise any of these rights, please contact us at support@albos.com.`,
+To exercise any of these rights, please contact us at support@Aapno.com.`,
   },
   {
     title: "SECTION 9 – THIRD-PARTY SERVICES",
@@ -130,10 +124,10 @@ You are advised to review this Privacy Policy periodically for any changes. Chan
     title: "SECTION 12 – CONTACT US",
     body: `If you have any questions about this Privacy Policy, please contact us:
 
-Albos Pvt. Ltd.
+Aapno Pvt. Ltd.
 Contact: Chandra Prakash
-Email: albostechnologies016@gmail.com
-Support: support@albos.com`,
+Email: Aapnotechnologies016@gmail.com
+Support: support@Aapno.com`,
   },
 ];
 
@@ -157,7 +151,9 @@ export default function PrivacyPolicy({ navigation }) {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Privacy Policy</Text>
-          <Text style={styles.headerMeta}>Albos Pvt. Ltd. · Last updated: 2025</Text>
+          <Text style={styles.headerMeta}>
+            Aapno Pvt. Ltd. · Last updated: 2025
+          </Text>
         </View>
 
         {/* Sections */}
@@ -170,7 +166,9 @@ export default function PrivacyPolicy({ navigation }) {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>© 2025 Albos Pvt. Ltd. All rights reserved.</Text>
+          <Text style={styles.footerText}>
+            © 2025 Aapno Pvt. Ltd. All rights reserved.
+          </Text>
         </View>
       </ScrollView>
     </View>

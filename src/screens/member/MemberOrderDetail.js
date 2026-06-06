@@ -199,7 +199,7 @@ export default function MemberOrderDetail({ route, navigation }) {
         {/* Totals */}
         <View style={s.totalsBox}>
           {[
-            ["Labour",      inr(order.laborTotal)],
+            ["Services",    inr(order.servicesTotal)],
             ["Parts",       inr(order.partsTotal)],
           ].map(([l, v]) => (
             <View key={l} style={s.totalsRow}>

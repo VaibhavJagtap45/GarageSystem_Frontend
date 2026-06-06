@@ -13,14 +13,18 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { COLORS, FONTS, SIZES, SHADOWS } from "../../utils/constants";
 import TopNav from "../../components/ui/TopNav";
-import { usePreferences, useFontSizes, FONT_SCALE } from "../../context/PreferencesContext";
+import {
+  usePreferences,
+  useFontSizes,
+  FONT_SCALE,
+} from "../../context/PreferencesContext";
 
 // ─── Font options ─────────────────────────────────────────────────────────────
 
 const FONT_OPTIONS = [
-  { key: "small",  label: "Small",  preview: 13 },
+  { key: "small", label: "Small", preview: 13 },
   { key: "medium", label: "Medium", preview: 15 },
-  { key: "large",  label: "Large",  preview: 18 },
+  { key: "large", label: "Large", preview: 18 },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -29,12 +33,24 @@ function SectionHeader({ title, subtitle, fs }) {
   return (
     <View style={s.sectionHeader}>
       <Text style={[s.sectionTitle, { fontSize: fs.textMd }]}>{title}</Text>
-      {subtitle ? <Text style={[s.sectionSub, { fontSize: fs.textXs }]}>{subtitle}</Text> : null}
+      {subtitle ? (
+        <Text style={[s.sectionSub, { fontSize: fs.textXs }]}>{subtitle}</Text>
+      ) : null}
     </View>
   );
 }
 
-function ToggleRow({ icon, iconColor, iconBg, title, subtitle, value, onValueChange, isLast, fs }) {
+function ToggleRow({
+  icon,
+  iconColor,
+  iconBg,
+  title,
+  subtitle,
+  value,
+  onValueChange,
+  isLast,
+  fs,
+}) {
   return (
     <View style={[s.row, isLast && s.rowLast]}>
       <View style={[s.rowIcon, { backgroundColor: iconBg }]}>
@@ -42,7 +58,9 @@ function ToggleRow({ icon, iconColor, iconBg, title, subtitle, value, onValueCha
       </View>
       <View style={s.rowContent}>
         <Text style={[s.rowTitle, { fontSize: fs.textBase }]}>{title}</Text>
-        {subtitle ? <Text style={[s.rowSub, { fontSize: fs.textSm }]}>{subtitle}</Text> : null}
+        {subtitle ? (
+          <Text style={[s.rowSub, { fontSize: fs.textSm }]}>{subtitle}</Text>
+        ) : null}
       </View>
       <Switch
         value={value}
@@ -74,7 +92,10 @@ export default function GeneralPreferencesScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[s.scroll, { paddingBottom: Platform.OS === "ios" ? 120 : 100 }]}
+          contentContainerStyle={[
+            s.scroll,
+            { paddingBottom: Platform.OS === "ios" ? 120 : 100 },
+          ]}
         >
           {/* ── Font Size ──────────────────────────────────────────── */}
           <SectionHeader
@@ -97,14 +118,30 @@ export default function GeneralPreferencesScreen() {
                   >
                     {active && (
                       <View style={s.fontCheck}>
-                        <MaterialCommunityIcons name="check" size={11} color={COLORS.white} />
+                        <MaterialCommunityIcons
+                          name="check"
+                          size={11}
+                          color={COLORS.white}
+                        />
                       </View>
                     )}
                     {/* Preview uses the ACTUAL computed scale for this option */}
-                    <Text style={[s.fontPreview, { fontSize: opt.preview * FONT_SCALE[opt.key] }, active && s.fontPreviewActive]}>
+                    <Text
+                      style={[
+                        s.fontPreview,
+                        { fontSize: opt.preview * FONT_SCALE[opt.key] },
+                        active && s.fontPreviewActive,
+                      ]}
+                    >
                       Aa
                     </Text>
-                    <Text style={[s.fontLabel, active && s.fontLabelActive, { fontSize: fs.textXs }]}>
+                    <Text
+                      style={[
+                        s.fontLabel,
+                        active && s.fontLabelActive,
+                        { fontSize: fs.textXs },
+                      ]}
+                    >
                       {opt.label}
                     </Text>
                   </TouchableOpacity>
@@ -114,8 +151,14 @@ export default function GeneralPreferencesScreen() {
 
             {/* Live preview strip */}
             <View style={s.previewStrip}>
-              <MaterialCommunityIcons name="eye-outline" size={13} color={COLORS.textMuted} />
-              <Text style={[s.previewLbl, { fontSize: fs.textXs }]}>Live preview · </Text>
+              <MaterialCommunityIcons
+                name="eye-outline"
+                size={13}
+                color={COLORS.textMuted}
+              />
+              <Text style={[s.previewLbl, { fontSize: fs.textXs }]}>
+                Live preview ·{" "}
+              </Text>
               <Text style={[s.previewText, { fontSize: fs.textBase }]}>
                 Repair Order · Invoice · ₹12,500
               </Text>
@@ -154,10 +197,28 @@ export default function GeneralPreferencesScreen() {
 
           {/* Notification-off warning */}
           {!prefs.notificationsEnabled && (
-            <View style={[s.infoBanner, { borderColor: `${COLORS.secondary}40`, backgroundColor: "#FFFBEB" }]}>
-              <MaterialCommunityIcons name="bell-off-outline" size={15} color={COLORS.secondary} />
-              <Text style={[s.infoBannerTxt, { fontSize: fs.textXs, color: "#BA7517" }]}>
-                Notifications are off. Important alerts (confirmations, errors) will still appear.
+            <View
+              style={[
+                s.infoBanner,
+                {
+                  borderColor: `${COLORS.secondary}40`,
+                  backgroundColor: "#FFFBEB",
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="bell-off-outline"
+                size={15}
+                color={COLORS.secondary}
+              />
+              <Text
+                style={[
+                  s.infoBannerTxt,
+                  { fontSize: fs.textXs, color: "#BA7517" },
+                ]}
+              >
+                Notifications are off. Important alerts (confirmations, errors)
+                will still appear.
               </Text>
             </View>
           )}
@@ -183,22 +244,67 @@ export default function GeneralPreferencesScreen() {
           </View>
 
           {prefs.autoWaNotification ? (
-            <View style={[s.infoBanner, { borderColor: `${"#25D366"}40`, backgroundColor: "#E8FBF0" }]}>
-              <MaterialCommunityIcons name="check-circle-outline" size={15} color="#25D366" />
+            <View
+              style={[
+                s.infoBanner,
+                { borderColor: `${"#25D366"}40`, backgroundColor: "#E8FBF0" },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="check-circle-outline"
+                size={15}
+                color="#25D366"
+              />
               <View style={{ flex: 1, gap: 4 }}>
-                <Text style={[s.infoBannerTxt, { fontSize: fs.textXs, color: "#1a7a45", fontFamily: FONTS.semibold }]}>
+                <Text
+                  style={[
+                    s.infoBannerTxt,
+                    {
+                      fontSize: fs.textXs,
+                      color: "#1a7a45",
+                      fontFamily: FONTS.semibold,
+                    },
+                  ]}
+                >
                   Active — Message sent automatically
                 </Text>
-                <Text style={[s.infoBannerTxt, { fontSize: fs.textXs, color: "#1a7a45" }]}>
-                  Requires <Text style={{ fontFamily: FONTS.semibold }}>WA_ACCESS_TOKEN</Text> + <Text style={{ fontFamily: FONTS.semibold }}>WA_PHONE_NUMBER_ID</Text> in your server environment (WhatsApp Cloud API by Meta).
+                <Text
+                  style={[
+                    s.infoBannerTxt,
+                    { fontSize: fs.textXs, color: "#1a7a45" },
+                  ]}
+                >
+                  Requires{" "}
+                  <Text style={{ fontFamily: FONTS.semibold }}>
+                    WA_ACCESS_TOKEN
+                  </Text>{" "}
+                  +{" "}
+                  <Text style={{ fontFamily: FONTS.semibold }}>
+                    WA_PHONE_NUMBER_ID
+                  </Text>{" "}
+                  in your server environment (WhatsApp Cloud API by Meta).
                 </Text>
               </View>
             </View>
           ) : (
-            <View style={[s.infoBanner, { borderColor: COLORS.borderLight, backgroundColor: COLORS.bgSection }]}>
-              <MaterialCommunityIcons name="information-outline" size={15} color={COLORS.textMuted} />
+            <View
+              style={[
+                s.infoBanner,
+                {
+                  borderColor: COLORS.borderLight,
+                  backgroundColor: COLORS.bgSection,
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="information-outline"
+                size={15}
+                color={COLORS.textMuted}
+              />
               <Text style={[s.infoBannerTxt, { fontSize: fs.textXs }]}>
-                When enabled, the system sends a WhatsApp message to the customer's registered number automatically — no manual step required.
+                When enabled, the system sends a WhatsApp message to the
+                customer's registered number automatically — no manual step
+                required.
               </Text>
             </View>
           )}
@@ -208,11 +314,19 @@ export default function GeneralPreferencesScreen() {
           <View style={s.card}>
             <View style={[s.row, s.rowLast]}>
               <View style={[s.rowIcon, { backgroundColor: COLORS.bgSection }]}>
-                <MaterialCommunityIcons name="information-outline" size={20} color={COLORS.textMuted} />
+                <MaterialCommunityIcons
+                  name="information-outline"
+                  size={20}
+                  color={COLORS.textMuted}
+                />
               </View>
               <View style={s.rowContent}>
-                <Text style={[s.rowTitle, { fontSize: fs.textBase }]}>App Version</Text>
-                <Text style={[s.rowSub, { fontSize: fs.textSm }]}>1.0.0 · Aapno Garage</Text>
+                <Text style={[s.rowTitle, { fontSize: fs.textBase }]}>
+                  App Version
+                </Text>
+                <Text style={[s.rowSub, { fontSize: fs.textSm }]}>
+                  1.0.0 · Aapno Garage
+                </Text>
               </View>
             </View>
           </View>
@@ -225,7 +339,7 @@ export default function GeneralPreferencesScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: COLORS.bg },
+  safe: { flex: 1, backgroundColor: COLORS.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   scroll: {},
 
@@ -235,8 +349,12 @@ const s = StyleSheet.create({
     marginBottom: SIZES.sm,
     gap: 3,
   },
-  sectionTitle: { fontFamily: FONTS.semibold, color: COLORS.textPrimary, letterSpacing: -0.1 },
-  sectionSub:   { fontFamily: FONTS.regular,  color: COLORS.textMuted },
+  sectionTitle: {
+    fontFamily: FONTS.semibold,
+    color: COLORS.textPrimary,
+    letterSpacing: -0.1,
+  },
+  sectionSub: { fontFamily: FONTS.regular, color: COLORS.textMuted },
 
   card: {
     marginHorizontal: SIZES.screenPadding,
@@ -255,53 +373,88 @@ const s = StyleSheet.create({
     gap: SIZES.sm,
   },
   fontOption: {
-    flex: 1, alignItems: "center", justifyContent: "center",
-    paddingVertical: SIZES.md, borderRadius: SIZES.radiusMd,
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: SIZES.md,
+    borderRadius: SIZES.radiusMd,
     backgroundColor: COLORS.bgSection,
-    borderWidth: 1.5, borderColor: COLORS.borderLight,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderLight,
     position: "relative",
     gap: 4,
   },
-  fontOptionActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryLight },
-  fontPreview:      { fontFamily: FONTS.bold, color: COLORS.textMuted },
-  fontPreviewActive:{ color: COLORS.primary },
-  fontLabel:        { fontFamily: FONTS.medium, color: COLORS.textMuted },
-  fontLabelActive:  { color: COLORS.primary },
+  fontOptionActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryLight,
+  },
+  fontPreview: { fontFamily: FONTS.bold, color: COLORS.textMuted },
+  fontPreviewActive: { color: COLORS.primary },
+  fontLabel: { fontFamily: FONTS.medium, color: COLORS.textMuted },
+  fontLabelActive: { color: COLORS.primary },
   fontCheck: {
-    position: "absolute", top: 5, right: 5,
-    width: 17, height: 17, borderRadius: 9,
+    position: "absolute",
+    top: 5,
+    right: 5,
+    width: 17,
+    height: 17,
+    borderRadius: 9,
     backgroundColor: COLORS.primary,
-    alignItems: "center", justifyContent: "center",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // ── Live preview strip ────────────────────────────────────────────────────
   previewStrip: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: SIZES.md, paddingVertical: SIZES.sm,
-    borderTopWidth: 1, borderTopColor: COLORS.borderLight,
-    backgroundColor: COLORS.bgSection, gap: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: SIZES.md,
+    paddingVertical: SIZES.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    backgroundColor: COLORS.bgSection,
+    gap: 4,
   },
-  previewLbl:  { fontFamily: FONTS.regular, color: COLORS.textMuted },
+  previewLbl: { fontFamily: FONTS.regular, color: COLORS.textMuted },
   previewText: { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
 
   // ── Toggle rows ───────────────────────────────────────────────────────────
   row: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: SIZES.md, paddingVertical: SIZES.md,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: SIZES.md,
+    paddingVertical: SIZES.md,
     gap: SIZES.md,
-    borderBottomWidth: 1, borderBottomColor: COLORS.borderLight,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
   },
-  rowLast:    { borderBottomWidth: 0 },
-  rowIcon:    { width: 44, height: 44, borderRadius: SIZES.radiusMd, alignItems: "center", justifyContent: "center" },
+  rowLast: { borderBottomWidth: 0 },
+  rowIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: SIZES.radiusMd,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   rowContent: { flex: 1, gap: 2 },
-  rowTitle:   { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-  rowSub:     { fontFamily: FONTS.regular,  color: COLORS.textMuted },
+  rowTitle: { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
+  rowSub: { fontFamily: FONTS.regular, color: COLORS.textMuted },
 
   // ── Info banners ──────────────────────────────────────────────────────────
   infoBanner: {
-    flexDirection: "row", alignItems: "flex-start", gap: SIZES.sm,
-    marginHorizontal: SIZES.screenPadding, marginTop: SIZES.sm,
-    borderRadius: SIZES.radiusMd, borderWidth: 1, padding: SIZES.sm + 2,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: SIZES.sm,
+    marginHorizontal: SIZES.screenPadding,
+    marginTop: SIZES.sm,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    padding: SIZES.sm + 2,
   },
-  infoBannerTxt: { flex: 1, fontFamily: FONTS.regular, color: COLORS.textMuted, lineHeight: 18 },
+  infoBannerTxt: {
+    flex: 1,
+    fontFamily: FONTS.regular,
+    color: COLORS.textMuted,
+    lineHeight: 18,
+  },
 });

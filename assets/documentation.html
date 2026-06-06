@@ -842,7 +842,7 @@
         <div class="step-num">2</div>
         <div class="step-content">
           <h4>Review Line Items</h4>
-          <p>Verify all services and parts are listed correctly. Add labour charge %, tax %, or discount if applicable.</p>
+          <p>Verify all services and parts are listed correctly. Add tax % or discount if applicable.</p>
         </div>
       </div>
       <div class="step">
@@ -1082,7 +1082,7 @@
         <div class="step-num">2</div>
         <div class="step-content">
           <h4>Tap an Invoice</h4>
-          <p>Open any invoice to see the full breakdown: services performed, parts used, labour charges, tax, discounts, and the total amount.</p>
+          <p>Open any invoice to see the full breakdown: services performed, parts used, tax, discounts, and the total amount.</p>
         </div>
       </div>
       <div class="step">
@@ -1269,12 +1269,12 @@
         <tr>
           <td>RepairOrder</td>
           <td>Core repair orders — heart of the system</td>
-          <td>orderNo, customerId, vehicleId, garageId, assignedTo, status, services[], parts[], labourCharge, taxAmount, discountAmount, totalAmount, customerNote, isDeleted</td>
+          <td>orderNo, customerId, vehicleId, garageId, assignedTo, status, services[], parts[], servicesTotal, partsTotal, taxTotal, discountAmount, totalAmount, customerNote, isDeleted</td>
         </tr>
         <tr>
           <td>Invoice</td>
           <td>Customer invoices linked to orders</td>
-          <td>invoiceNo, repairOrderId, customerId, vehicleId, services[], parts[], totalAmount, paymentStatus, paymentMode, labourCharge, taxAmount, discountAmount, notes</td>
+          <td>invoiceNo, repairOrderId, customerId, vehicleId, services[], parts[], totalAmount, paymentStatus, paymentMode, taxAmount, discountAmount, notes</td>
         </tr>
         <tr>
           <td>Vehicle</td>

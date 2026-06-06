@@ -1,10 +1,19 @@
 import { useState, useCallback } from "react";
 import {
-  View, Text, ScrollView, StyleSheet,
-  ActivityIndicator, TouchableOpacity, Alert, Platform, Linking, Image,
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+  Alert,
+  Platform,
+  Linking,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import * as Print from "expo-print";
@@ -12,12 +21,11 @@ import * as Sharing from "expo-sharing";
 import { COLORS, FONTS, SIZES, SHADOWS } from "../../utils/constants";
 import { customerGetInvoiceDetail } from "../../api/portal";
 import { inr, fmtDate } from "../../utils/portalHelpers";
-import Badge from "../../components/portal/Badge";
 import NavBar from "../../components/portal/NavBar";
 import Empty from "../../components/portal/Empty";
 import LineRow from "../../components/portal/LineRow";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
 function fmt(n) {
   if (n == null) return "0.00";
   return Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -26,14 +34,16 @@ function fmt(n) {
 function fmtDateFull(dateStr) {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleDateString("en-IN", {
-    day: "2-digit", month: "short", year: "numeric",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   });
 }
 
-// ─── PDF HTML Builder (matches owner invoice style) ───────────────────────────
+// ─── PDF HTML Builder (matches owner invoice style) ─────────────────────────
 function buildPdfHtml(invoice, garage) {
   const customer = invoice.customerId;
-  const vehicle  = invoice.vehicleId;
+  const vehicle = invoice.vehicleId;
 
   const garageName    = garage?.garageName ?? "Garage";
   const garageAddress = garage?.garageAddress ?? "";
@@ -41,31 +51,35 @@ function buildPdfHtml(invoice, garage) {
   const garageGst     = garage?.gstNumber ?? "";
 
   const logoLetter = garageName.charAt(0).toUpperCase();
-  const logoHtml   = garage?.garageLogo
+  const logoHtml = garage?.garageLogo
     ? `<img src="${garage.garageLogo}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;flex-shrink:0;" />`
     : `<div class="logo-circle">${logoLetter}</div>`;
 
   const serviceRows = (invoice.services ?? [])
-    .map((sv) => `
+    .map(
+      (sv) => `
       <tr>
         <td>${sv.name ?? ""}</td>
         <td style="text-align:center">1</td>
         <td style="text-align:right">${fmt(sv.price ?? sv.lineTotal)}</td>
         <td style="text-align:right">${fmt(sv.lineTotal)}</td>
-      </tr>`)
+      </tr>`,
+    )
     .join("");
 
   const partRows = (invoice.parts ?? [])
-    .map((p) => `
+    .map(
+      (p) => `
       <tr>
         <td>${p.name ?? ""}</td>
         <td style="text-align:center">${p.quantity ?? 1}</td>
         <td style="text-align:right">${fmt(p.unitPrice)}</td>
         <td style="text-align:right">${fmt(p.lineTotal)}</td>
-      </tr>`)
+      </tr>`,
+    )
     .join("");
 
-  const subTotal   = (invoice.servicesSubTotal ?? 0) + (invoice.partsSubTotal ?? 0);
+  const subTotal = (invoice.servicesSubTotal ?? 0) + (invoice.partsSubTotal ?? 0);
   const grandTotal = invoice.totalAmount ?? 0;
 
   return `
@@ -149,8 +163,8 @@ function buildPdfHtml(invoice, garage) {
         <div class="garage-info">
           <div class="garage-name">${garageName.toUpperCase()}</div>
           ${garageAddress ? `<div>${garageAddress}</div>` : ""}
-          ${garagePhone   ? `<div>&#9742;&nbsp;${garagePhone}</div>` : ""}
-          ${garageGst     ? `<div>GST: ${garageGst}</div>` : ""}
+          ${garagePhone ? `<div>&#9742;&nbsp;${garagePhone}</div>` : ""}
+          ${garageGst ? `<div>GST: ${garageGst}</div>` : ""}
         </div>
       </div>
 
@@ -167,9 +181,11 @@ function buildPdfHtml(invoice, garage) {
             ${customer?.emailId ?? ""}
           </td>
           <td class="customer-cell">
-            ${vehicle
-              ? `${vehicle.vehicleBrand ?? ""} ${vehicle.vehicleModel ?? ""}<br>${vehicle.vehicleRegisterNo ?? ""}`
-              : "—"}
+            ${
+              vehicle
+                ? `${vehicle.vehicleBrand ?? ""} ${vehicle.vehicleModel ?? ""}<br>${vehicle.vehicleRegisterNo ?? ""}`
+                : "—"
+            }
           </td>
           <td style="text-align:right; vertical-align:top">
             ${fmtDateFull(invoice.createdAt)}<br>
@@ -178,7 +194,9 @@ function buildPdfHtml(invoice, garage) {
         </tr>
       </table>
 
-      ${serviceRows ? `
+      ${
+        serviceRows
+          ? `
         <div class="spacer"></div>
         <table>
           <tr class="section-hdr">
@@ -192,9 +210,13 @@ function buildPdfHtml(invoice, garage) {
             <td colspan="3" style="text-align:right">Total :</td>
             <td style="text-align:right">&#8377;${fmt(invoice.servicesSubTotal)}</td>
           </tr>
-        </table>` : ""}
+        </table>`
+          : ""
+      }
 
-      ${partRows ? `
+      ${
+        partRows
+          ? `
         <div class="spacer"></div>
         <table>
           <tr class="section-hdr">
@@ -208,7 +230,9 @@ function buildPdfHtml(invoice, garage) {
             <td colspan="3" style="text-align:right">Total :</td>
             <td style="text-align:right">&#8377;${fmt(invoice.partsSubTotal)}</td>
           </tr>
-        </table>` : ""}
+        </table>`
+          : ""
+      }
 
       <div class="spacer"></div>
       <table>
@@ -220,21 +244,22 @@ function buildPdfHtml(invoice, garage) {
             <td class="summary-label">SUB TOTAL:</td>
             <td class="summary-value">&#8377;${fmt(subTotal)}</td>
           </tr>
-          ${(invoice.labourCharge ?? 0) > 0
-            ? `<tr>
-                <td class="summary-label">LABOUR (${invoice.labourPercent ?? 20}%):</td>
-                <td class="summary-value">&#8377;${fmt(invoice.labourCharge)}</td>
-               </tr>` : ""}
-          ${(invoice.taxAmount ?? 0) > 0
-            ? `<tr>
+          ${
+            (invoice.taxAmount ?? 0) > 0
+              ? `<tr>
                 <td class="summary-label">TAX:</td>
                 <td class="summary-value">&#8377;${fmt(invoice.taxAmount)}</td>
-               </tr>` : ""}
-          ${(invoice.discountAmount ?? 0) > 0
-            ? `<tr>
+               </tr>`
+              : ""
+          }
+          ${
+            (invoice.discountAmount ?? 0) > 0
+              ? `<tr>
                 <td class="summary-label">DISCOUNT:</td>
                 <td class="summary-value">-&#8377;${fmt(invoice.discountAmount)}</td>
-               </tr>` : ""}
+               </tr>`
+              : ""
+          }
         </tbody>
         <tr class="grand-total-row">
           <td class="summary-label">GRAND TOTAL:</td>
@@ -248,9 +273,11 @@ function buildPdfHtml(invoice, garage) {
         &nbsp;&nbsp;|&nbsp;&nbsp;
         Status: ${(invoice.paymentStatus ?? "unpaid").toUpperCase()}
       </div>
-      ${invoice.notes
-        ? `<div style="margin-top:12px; font-size:11px; color:#555;"><b>Notes:</b> ${invoice.notes}</div>`
-        : ""}
+      ${
+        invoice.notes
+          ? `<div style="margin-top:12px; font-size:11px; color:#555;"><b>Notes:</b> ${invoice.notes}</div>`
+          : ""
+      }
       <div style="text-align:center; margin-top:20px; font-size:11px; color:#888;">
         Thank you for your business!
       </div>
@@ -259,15 +286,15 @@ function buildPdfHtml(invoice, garage) {
   `;
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+// ─── Screen ─────────────────────────────────────────────────────────────────
 export default function CustomerInvoiceDetail({ route, navigation }) {
   const { invoiceId } = route.params;
   const tabBarH = useBottomTabBarHeight();
 
-  const [invoice,      setInv]         = useState(null);
-  const [garage,       setGarage]      = useState(null);
-  const [loading,      setLoading]     = useState(true);
-  const [generatingPdf,setGenerating]  = useState(false);
+  const [invoice, setInv]           = useState(null);
+  const [garage, setGarage]         = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [generatingPdf, setGenerating] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -294,7 +321,10 @@ export default function CustomerInvoiceDetail({ route, navigation }) {
       const { uri } = await Print.printToFileAsync({ html });
       const available = await Sharing.isAvailableAsync();
       if (!available) {
-        Alert.alert("Sharing not available", "Your device does not support file sharing.");
+        Alert.alert(
+          "Sharing not available",
+          "Your device does not support file sharing.",
+        );
         return;
       }
       await Sharing.shareAsync(uri, {
@@ -319,297 +349,784 @@ export default function CustomerInvoiceDetail({ route, navigation }) {
     t += `Date: ${fmtDateFull(invoice.createdAt)}\n`;
     if (invoice.vehicleId) {
       t += `Vehicle: ${invoice.vehicleId.vehicleBrand ?? ""} ${invoice.vehicleId.vehicleModel ?? ""}`;
-      if (invoice.vehicleId.vehicleRegisterNo) t += ` (${invoice.vehicleId.vehicleRegisterNo})`;
+      if (invoice.vehicleId.vehicleRegisterNo)
+        t += ` (${invoice.vehicleId.vehicleRegisterNo})`;
       t += "\n";
     }
     t += `\nGRAND TOTAL: Rs.${fmt(invoice.totalAmount)}\n`;
     t += `\nThank you for your business!`;
     const body = encodeURIComponent(t);
-    const url  = Platform.OS === "ios"
-      ? `sms:+${phone}&body=${body}`
-      : `sms:+${phone}?body=${body}`;
-    Linking.openURL(url).catch(() => Alert.alert("Error", "Could not open SMS app."));
+    const url =
+      Platform.OS === "ios" ? `sms:+${phone}&body=${body}` : `sms:+${phone}?body=${body}`;
+    Linking.openURL(url).catch(() =>
+      Alert.alert("Error", "Could not open SMS app."),
+    );
   };
 
-  if (loading) return <ActivityIndicator color={COLORS.primary} style={{ marginTop: 80 }} />;
-  if (!invoice) return <Empty icon="alert-circle-outline" title="Invoice not found" />;
+  if (loading)
+    return (
+      <SafeAreaView style={s.safe}>
+        <NavBar title="Loading…" onBack={() => navigation.goBack()} />
+        <ActivityIndicator color="#3b82f6" style={{ marginTop: 80 }} />
+      </SafeAreaView>
+    );
 
-  const servicesSubTotal = invoice.services?.reduce((sum, sv) => sum + (sv.lineTotal || 0), 0) || 0;
-  const partsSubTotal    = invoice.parts?.reduce((sum, p)  => sum + (p.lineTotal  || 0), 0) || 0;
+  if (!invoice)
+    return <Empty icon="alert-circle-outline" title="Invoice not found" />;
+
+  const servicesSubTotal =
+    invoice.services?.reduce((sum, sv) => sum + (sv.lineTotal || 0), 0) || 0;
+  const partsSubTotal =
+    invoice.parts?.reduce((sum, p) => sum + (p.lineTotal || 0), 0) || 0;
 
   const totalsRows = [
-    { l: "Services", v: inr(servicesSubTotal) },
-    { l: "Parts",    v: inr(partsSubTotal)    },
-    invoice.labourCharge  > 0 && { l: `Labour (${invoice.labourPercent ?? 0}%)`, v: inr(invoice.labourCharge)  },
-    invoice.discountAmount > 0 && { l: "Discount", v: "− " + inr(invoice.discountAmount), green: true },
-    invoice.taxAmount      > 0 && { l: "Tax",      v: inr(invoice.taxAmount) },
+    invoice.services?.length > 0 && { l: "Services", v: inr(servicesSubTotal) },
+    invoice.parts?.length > 0 && { l: "Parts", v: inr(partsSubTotal) },
+    invoice.discountAmount > 0 && {
+      l: "Discount",
+      v: "- " + inr(invoice.discountAmount),
+      green: true,
+    },
+    invoice.taxAmount > 0 && { l: "Tax", v: inr(invoice.taxAmount) },
   ].filter(Boolean);
 
   const paid = invoice.paymentStatus === "paid";
+  const partial = invoice.paymentStatus === "partially_paid";
+  const paymentLabel = paid
+    ? "Fully paid"
+    : partial
+      ? "Partially paid"
+      : "Payment pending";
+  const heroGrad = paid
+    ? ["#16a34a", "#22c55e"]
+    : partial
+      ? ["#d97706", "#f59e0b"]
+      : ["#1d4ed8", "#3b82f6"];
 
   return (
     <SafeAreaView style={s.safe} edges={["top"]}>
-      <NavBar title={invoice.invoiceNo || "Invoice"} onBack={() => navigation.goBack()} />
+      <NavBar
+        title={invoice.invoiceNo || "Invoice"}
+        subtitle={fmtDate(invoice.createdAt)}
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: SIZES.screenPadding, paddingBottom: tabBarH + 100 }}
+        contentContainerStyle={{ paddingBottom: tabBarH + 100 }}
       >
-        {/* ── Garage header ── */}
-        {garage && (
-          <View style={s.garageCard}>
-            {garage.garageLogo ? (
-              <Image source={{ uri: garage.garageLogo }} style={s.logoImg} />
-            ) : (
-              <View style={s.logoWrap}>
-                <Text style={s.logoLetter}>{garage.garageName?.charAt(0)?.toUpperCase()}</Text>
-              </View>
-            )}
-            <View style={{ flex: 1 }}>
-              <Text style={s.gname}>{garage.garageName}</Text>
-              {garage.garageOwnerName    ? <Text style={s.ginfo}>{garage.garageOwnerName}</Text>    : null}
-              {garage.garageAddress      ? <Text style={s.ginfo}>{garage.garageAddress}</Text>      : null}
-              {garage.garageContactNumber? (
-                <View style={s.ginfoRow}>
-                  <Ionicons name="call-outline" size={12} color={COLORS.textMuted} />
-                  <Text style={s.ginfo}>{garage.garageContactNumber}</Text>
-                </View>
-              ) : null}
-              {garage.isGstApplicable && garage.gstNumber ? (
-                <Text style={s.gst}>GST: {garage.gstNumber}</Text>
-              ) : null}
+        {/* ── Hero ── */}
+        <LinearGradient
+          colors={heroGrad}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.hero}
+        >
+          <View style={[s.heroDeco, { width: 160, height: 160, top: -40, right: -30 }]} />
+          <View style={[s.heroDeco, { width: 80, height: 80, bottom: -20, left: -10 }]} />
+
+          <View style={s.heroTopRow}>
+            <View style={s.heroIconWrap}>
+              <Ionicons
+                name={paid ? "checkmark-circle" : "receipt"}
+                size={22}
+                color={COLORS.white}
+              />
+            </View>
+            <View style={s.heroStatusBadge}>
+              <View style={s.heroStatusDot} />
+              <Text style={s.heroStatusTxt}>{paymentLabel}</Text>
             </View>
           </View>
-        )}
 
-        {/* ── Invoice meta ── */}
-        <View style={s.metaCard}>
-          <View style={s.metaItem}>
-            <Text style={s.metaLbl}>Invoice No</Text>
-            <Text style={s.metaVal}>{invoice.invoiceNo || "—"}</Text>
-          </View>
-          <View style={s.metaItem}>
-            <Text style={s.metaLbl}>Date</Text>
-            <Text style={s.metaVal}>{fmtDate(invoice.createdAt)}</Text>
-          </View>
-          <View style={s.metaItem}>
-            <Text style={s.metaLbl}>Status</Text>
-            <Badge status={invoice.paymentStatus} />
-          </View>
-        </View>
+          <Text style={s.heroEyebrow}>Grand total</Text>
+          <Text style={s.heroAmt}>{inr(invoice.totalAmount)}</Text>
+          {garage?.garageName ? (
+            <Text style={s.heroIssued} numberOfLines={1}>
+              Issued by {garage.garageName}
+            </Text>
+          ) : null}
 
-        {/* ── Vehicle ── */}
-        {invoice.vehicleId && (
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>Vehicle</Text>
-            <View style={s.card}>
-              <View style={s.cardRow}>
-                <View style={s.cardIcon}>
-                  <Ionicons name="car-sport-outline" size={18} color="#3b82f6" />
+          <View style={s.heroStatsRow}>
+            <View style={s.heroStatCard}>
+              <Text style={s.heroStatVal}>
+                {invoice.services?.length || 0}
+              </Text>
+              <Text style={s.heroStatLbl}>Services</Text>
+            </View>
+            <View style={s.heroStatCard}>
+              <Text style={s.heroStatVal}>{invoice.parts?.length || 0}</Text>
+              <Text style={s.heroStatLbl}>Parts</Text>
+            </View>
+            <View style={s.heroStatCard}>
+              <Text style={s.heroStatVal}>
+                {(invoice.paymentMode ?? "cash").replace("_", " ").toUpperCase()}
+              </Text>
+              <Text style={s.heroStatLbl}>Mode</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        <View style={s.contentWrap}>
+          {/* ── Garage header ── */}
+          {garage && (
+            <View style={s.garageCard}>
+              {garage.garageLogo ? (
+                <Image source={{ uri: garage.garageLogo }} style={s.logoImg} />
+              ) : (
+                <LinearGradient
+                  colors={["#1d4ed8", "#3b82f6"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={s.logoWrap}
+                >
+                  <Text style={s.logoLetter}>
+                    {garage.garageName?.charAt(0)?.toUpperCase()}
+                  </Text>
+                </LinearGradient>
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={s.gname}>{garage.garageName}</Text>
+                {garage.garageOwnerName ? (
+                  <Text style={s.ginfo}>{garage.garageOwnerName}</Text>
+                ) : null}
+                {garage.garageAddress ? (
+                  <Text style={s.ginfo}>{garage.garageAddress}</Text>
+                ) : null}
+                {garage.garageContactNumber ? (
+                  <View style={s.ginfoRow}>
+                    <Ionicons name="call-outline" size={12} color="#1d4ed8" />
+                    <Text style={[s.ginfo, { color: "#1d4ed8", fontFamily: FONTS.semibold }]}>
+                      {garage.garageContactNumber}
+                    </Text>
+                  </View>
+                ) : null}
+                {garage.isGstApplicable && garage.gstNumber ? (
+                  <Text style={s.gst}>GST: {garage.gstNumber}</Text>
+                ) : null}
+              </View>
+            </View>
+          )}
+
+          {/* ── Meta card ── */}
+          <View style={s.metaCard}>
+            <View style={s.metaItem}>
+              <Text style={s.metaLbl}>Invoice</Text>
+              <Text style={s.metaVal}>{invoice.invoiceNo || "—"}</Text>
+            </View>
+            <View style={s.metaDivider} />
+            <View style={s.metaItem}>
+              <Text style={s.metaLbl}>Issued</Text>
+              <Text style={s.metaVal}>{fmtDate(invoice.createdAt)}</Text>
+            </View>
+            <View style={s.metaDivider} />
+            <View style={s.metaItem}>
+              <Text style={s.metaLbl}>Amount</Text>
+              <Text style={[s.metaVal, { color: "#1d4ed8" }]}>
+                {inr(invoice.totalAmount)}
+              </Text>
+            </View>
+          </View>
+
+          {/* ── Vehicle ── */}
+          {invoice.vehicleId && (
+            <View style={s.block}>
+              <Text style={s.blockTitle}>Vehicle</Text>
+              <View style={s.infoCard}>
+                <View style={s.infoIconWrap}>
+                  <Ionicons name="car-sport-outline" size={17} color="#1d4ed8" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.cardMain}>
-                    {invoice.vehicleId.vehicleBrand} {invoice.vehicleId.vehicleModel}
+                  <Text style={s.infoMain}>
+                    {invoice.vehicleId.vehicleBrand}{" "}
+                    {invoice.vehicleId.vehicleModel}
                   </Text>
-                  <Text style={s.cardSub}>{invoice.vehicleId.vehicleRegisterNo}</Text>
+                  <Text style={s.infoSub}>
+                    {invoice.vehicleId.vehicleRegisterNo}
+                  </Text>
                 </View>
               </View>
             </View>
-          </View>
-        )}
+          )}
 
-        {/* ── Services ── */}
-        {invoice.services?.length > 0 && (
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>Services</Text>
-            <View style={s.linesCard}>
-              {invoice.services.map((sv, i) => (
-                <LineRow key={i} name={sv.name} amt={inr(sv.lineTotal)} />
+          {/* ── Services ── */}
+          {invoice.services?.length > 0 && (
+            <View style={s.block}>
+              <View style={s.blockHead}>
+                <View style={[s.blockIcon, { backgroundColor: "#dbeafe" }]}>
+                  <MaterialCommunityIcons
+                    name="wrench-outline"
+                    size={15}
+                    color="#1d4ed8"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.blockTitle}>Services</Text>
+                  <Text style={s.blockSub}>
+                    {invoice.services.length} item
+                    {invoice.services.length === 1 ? "" : "s"} · {inr(servicesSubTotal)}
+                  </Text>
+                </View>
+              </View>
+              <View style={s.linesCard}>
+                {invoice.services.map((sv, i) => (
+                  <LineRow key={i} name={sv.name} amt={inr(sv.lineTotal)} />
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* ── Parts ── */}
+          {invoice.parts?.length > 0 && (
+            <View style={s.block}>
+              <View style={s.blockHead}>
+                <View style={[s.blockIcon, { backgroundColor: "#fef3c7" }]}>
+                  <Ionicons name="cog-outline" size={16} color="#d97706" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.blockTitle}>Parts</Text>
+                  <Text style={s.blockSub}>
+                    {invoice.parts.length} part
+                    {invoice.parts.length === 1 ? "" : "s"} · {inr(partsSubTotal)}
+                  </Text>
+                </View>
+              </View>
+              <View style={s.linesCard}>
+                {invoice.parts.map((p, i) => (
+                  <LineRow
+                    key={i}
+                    name={`${p.name} × ${p.quantity}`}
+                    amt={inr(p.lineTotal)}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* ── Totals ── */}
+          <View style={s.block}>
+            <Text style={s.blockTitle}>Payment breakdown</Text>
+            <View style={s.totalsBox}>
+              {totalsRows.map((r) => (
+                <View key={r.l} style={s.totalsRow}>
+                  <Text style={s.totalsLabel}>{r.l}</Text>
+                  <Text
+                    style={[s.totalsVal, r.green && { color: "#22c55e" }]}
+                  >
+                    {r.v}
+                  </Text>
+                </View>
               ))}
+              <View style={s.totalFinalRow}>
+                <Text style={s.totalFinalLabel}>Grand total</Text>
+                <Text style={s.totalFinalAmt}>{inr(invoice.totalAmount)}</Text>
+              </View>
             </View>
           </View>
-        )}
 
-        {/* ── Parts ── */}
-        {invoice.parts?.length > 0 && (
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>Parts</Text>
-            <View style={s.linesCard}>
-              {invoice.parts.map((p, i) => (
-                <LineRow key={i} name={`${p.name} × ${p.quantity}`} amt={inr(p.lineTotal)} />
-              ))}
+          {/* ── Payment mode ── */}
+          <View style={s.payRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.payLbl}>Payment mode</Text>
+              <Text style={s.payVal}>
+                {(invoice.paymentMode ?? "cash").replace("_", " ").toUpperCase()}
+              </Text>
+            </View>
+            <View
+              style={[
+                s.payPill,
+                {
+                  backgroundColor: paid
+                    ? "#dcfce7"
+                    : partial
+                      ? "#fef3c7"
+                      : "#fee2e2",
+                },
+              ]}
+            >
+              <Ionicons
+                name={
+                  paid
+                    ? "checkmark-circle-outline"
+                    : partial
+                      ? "time-outline"
+                      : "alert-circle-outline"
+                }
+                size={14}
+                color={paid ? "#22c55e" : partial ? "#f59e0b" : "#ef4444"}
+              />
+              <Text
+                style={[
+                  s.payPillTxt,
+                  {
+                    color: paid
+                      ? "#22c55e"
+                      : partial
+                        ? "#f59e0b"
+                        : "#ef4444",
+                  },
+                ]}
+              >
+                {(invoice.paymentStatus ?? "unpaid").toUpperCase()}
+              </Text>
             </View>
           </View>
-        )}
 
-        {/* ── Totals ── */}
-        <View style={s.totalsBox}>
-          {totalsRows.map((r) => (
-            <View key={r.l} style={s.totalsRow}>
-              <Text style={s.totalsLabel}>{r.l}</Text>
-              <Text style={[s.totalsVal, r.green && { color: "#22c55e" }]}>{r.v}</Text>
+          {/* ── Notes ── */}
+          {invoice.notes ? (
+            <View style={s.block}>
+              <Text style={s.blockTitle}>Notes</Text>
+              <View style={s.notesCard}>
+                <Ionicons name="document-text-outline" size={14} color={COLORS.textMuted} />
+                <Text style={s.notesTxt}>{invoice.notes}</Text>
+              </View>
             </View>
-          ))}
-          <View style={s.totalFinalRow}>
-            <Text style={s.totalFinalLabel}>Grand Total</Text>
-            <Text style={s.totalFinalAmt}>{inr(invoice.totalAmount)}</Text>
-          </View>
+          ) : null}
+
+          <Text style={s.footer}>Thank you for your business ✨</Text>
         </View>
-
-        {/* ── Payment mode ── */}
-        <View style={s.payRow}>
-          <View style={s.payItem}>
-            <Text style={s.payLbl}>Payment Mode</Text>
-            <Text style={s.payVal}>
-              {(invoice.paymentMode ?? "cash").replace("_", " ").toUpperCase()}
-            </Text>
-          </View>
-          <View style={[s.payPill, { backgroundColor: paid ? "#dcfce7" : "#fef3c7" }]}>
-            <Ionicons
-              name={paid ? "checkmark-circle-outline" : "time-outline"}
-              size={14}
-              color={paid ? "#22c55e" : "#f59e0b"}
-            />
-            <Text style={[s.payPillTxt, { color: paid ? "#22c55e" : "#f59e0b" }]}>
-              {(invoice.paymentStatus ?? "unpaid").toUpperCase()}
-            </Text>
-          </View>
-        </View>
-
-        {/* ── Notes ── */}
-        {invoice.notes ? (
-          <Text style={s.notes}>Note: {invoice.notes}</Text>
-        ) : null}
       </ScrollView>
 
-      {/* ── Action bar ── */}
+      {/* ── Floating action bar ── */}
       <View style={[s.actionBar, { bottom: tabBarH }]}>
         <TouchableOpacity
-          style={[s.actionBtn, { backgroundColor: "#3b82f6" }]}
+          style={s.actionBtn}
           onPress={handleDownloadPdf}
           disabled={generatingPdf}
           activeOpacity={0.85}
         >
-          {generatingPdf
-            ? <ActivityIndicator color={COLORS.white} size="small" />
-            : (
+          <LinearGradient
+            colors={["#1d4ed8", "#3b82f6"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.actionBtnInner}
+          >
+            {generatingPdf ? (
+              <ActivityIndicator color={COLORS.white} size="small" />
+            ) : (
               <>
                 <Ionicons name="download-outline" size={18} color={COLORS.white} />
                 <Text style={s.actionTxt}>Download PDF</Text>
               </>
             )}
+          </LinearGradient>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[s.actionBtn, { backgroundColor: "#22c55e" }]}
+          style={s.actionBtn}
           onPress={handleShareSms}
           activeOpacity={0.85}
         >
-          <Ionicons name="chatbubble-outline" size={18} color={COLORS.white} />
-          <Text style={s.actionTxt}>Share SMS</Text>
+          <LinearGradient
+            colors={["#16a34a", "#22c55e"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.actionBtnInner}
+          >
+            <Ionicons name="chatbubble-outline" size={18} color={COLORS.white} />
+            <Text style={s.actionTxt}>Share SMS</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Styles ─────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
 
+  // Hero
+  hero: {
+    marginHorizontal: SIZES.screenPadding,
+    marginTop: SIZES.sm,
+    padding: SIZES.lg,
+    borderRadius: SIZES.radiusXl,
+    overflow: "hidden",
+    ...SHADOWS.md,
+  },
+  heroDeco: {
+    position: "absolute",
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  heroTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: SIZES.md,
+  },
+  heroIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    borderRadius: SIZES.radiusFull,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  heroStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.white,
+  },
+  heroStatusTxt: {
+    fontFamily: FONTS.bold,
+    fontSize: 10,
+    color: COLORS.white,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  heroEyebrow: {
+    fontFamily: FONTS.medium,
+    fontSize: 11,
+    color: "rgba(255,255,255,0.78)",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  heroAmt: {
+    fontFamily: FONTS.extrabold,
+    fontSize: 34,
+    color: COLORS.white,
+    letterSpacing: -0.8,
+    marginTop: 4,
+  },
+  heroIssued: {
+    marginTop: 2,
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textSm,
+    color: "rgba(255,255,255,0.85)",
+  },
+  heroStatsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: SIZES.md,
+  },
+  heroStatCard: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+    padding: 10,
+  },
+  heroStatVal: {
+    fontFamily: FONTS.extrabold,
+    fontSize: SIZES.textSm,
+    color: COLORS.white,
+    letterSpacing: -0.1,
+  },
+  heroStatLbl: {
+    marginTop: 2,
+    fontFamily: FONTS.regular,
+    fontSize: 10,
+    color: "rgba(255,255,255,0.78)",
+  },
+
+  contentWrap: {
+    paddingHorizontal: SIZES.screenPadding,
+    paddingTop: SIZES.md,
+  },
+
   // Garage card
   garageCard: {
-    flexDirection: "row", alignItems: "flex-start", gap: SIZES.sm,
-    backgroundColor: "#dbeafe", borderRadius: SIZES.radiusMd,
-    padding: SIZES.md, marginBottom: SIZES.lg,
-    borderWidth: 1, borderColor: "#93c5fd",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: SIZES.sm + 2,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusLg,
+    padding: SIZES.md,
+    marginBottom: SIZES.md,
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
+    ...SHADOWS.sm,
   },
-  logoImg:  { width: 48, height: 48, borderRadius: 24, flexShrink: 0 },
+  logoImg: { width: 48, height: 48, borderRadius: 24, flexShrink: 0 },
   logoWrap: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: "#1d4ed8",
-    alignItems: "center", justifyContent: "center",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
     flexShrink: 0,
+    ...SHADOWS.sm,
   },
-  logoLetter: { fontFamily: FONTS.extrabold, fontSize: 20, color: COLORS.white },
-  gname:    { fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: "#1d4ed8" },
-  ginfo:    { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textSecondary, marginTop: 2 },
-  ginfoRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
-  gst:      { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted, marginTop: 4 },
+  logoLetter: {
+    fontFamily: FONTS.extrabold,
+    fontSize: 20,
+    color: COLORS.white,
+  },
+  gname: {
+    fontFamily: FONTS.extrabold,
+    fontSize: SIZES.textBase,
+    color: "#1d4ed8",
+    letterSpacing: -0.1,
+  },
+  ginfo: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  ginfoRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+  gst: { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted, marginTop: 4 },
 
-  // Meta
+  // Meta card
   metaCard: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    backgroundColor: COLORS.bgCard, borderRadius: SIZES.radiusMd,
-    padding: SIZES.md, marginBottom: SIZES.lg,
-    borderWidth: 1, borderColor: COLORS.borderLight, ...SHADOWS.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusLg,
+    padding: SIZES.md,
+    marginBottom: SIZES.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    ...SHADOWS.sm,
   },
-  metaItem:  {},
-  metaLbl:   { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted },
-  metaVal:   { fontFamily: FONTS.semibold, fontSize: SIZES.textBase, color: COLORS.textPrimary },
-
-  // Sections
-  section:      { marginBottom: SIZES.lg },
-  sectionTitle: { fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: COLORS.textPrimary, marginBottom: SIZES.sm },
-
-  // Generic card
-  card: {
-    backgroundColor: COLORS.bgCard, borderRadius: SIZES.radiusMd,
-    borderWidth: 1, borderColor: COLORS.borderLight, overflow: "hidden", ...SHADOWS.sm,
+  metaItem: { flex: 1 },
+  metaLbl: {
+    fontFamily: FONTS.regular,
+    fontSize: 10.5,
+    color: COLORS.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
-  cardRow:  { flexDirection: "row", alignItems: "center", gap: SIZES.sm, padding: SIZES.md },
-  cardIcon: { width: 40, height: 40, borderRadius: SIZES.radiusSm, backgroundColor: "#dbeafe", alignItems: "center", justifyContent: "center" },
-  cardMain: { fontFamily: FONTS.semibold, fontSize: SIZES.textBase, color: COLORS.textPrimary },
-  cardSub:  { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted, marginTop: 2 },
+  metaVal: {
+    marginTop: 3,
+    fontFamily: FONTS.extrabold,
+    fontSize: SIZES.textSm,
+    color: COLORS.textPrimary,
+    letterSpacing: -0.1,
+  },
+  metaDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: COLORS.borderLight,
+    marginHorizontal: 4,
+  },
 
-  // Line rows card
+  // Blocks
+  block: { marginBottom: SIZES.md },
+  blockHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: SIZES.sm,
+  },
+  blockIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  blockTitle: {
+    fontFamily: FONTS.extrabold,
+    fontSize: SIZES.textBase,
+    color: COLORS.textPrimary,
+    marginBottom: 4,
+    letterSpacing: -0.1,
+  },
+  blockSub: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+  },
+
+  // Info card
+  infoCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SIZES.sm,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusLg,
+    padding: SIZES.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    ...SHADOWS.sm,
+  },
+  infoIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: SIZES.radiusSm,
+    backgroundColor: "#dbeafe",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  infoMain: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textBase,
+    color: COLORS.textPrimary,
+  },
+  infoSub: {
+    marginTop: 2,
+    fontFamily: FONTS.medium,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+  },
+
+  // Lines card
   linesCard: {
-    backgroundColor: COLORS.bgCard, borderRadius: SIZES.radiusMd,
-    borderWidth: 1, borderColor: COLORS.borderLight, overflow: "hidden", ...SHADOWS.sm,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    overflow: "hidden",
+    paddingHorizontal: SIZES.md,
+    ...SHADOWS.sm,
   },
 
   // Totals
   totalsBox: {
-    backgroundColor: COLORS.bgCard, borderRadius: SIZES.radiusMd,
-    padding: SIZES.lg, marginBottom: SIZES.lg,
-    borderWidth: 1, borderColor: COLORS.border, ...SHADOWS.sm,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusLg,
+    padding: SIZES.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOWS.sm,
   },
-  totalsRow:      { flexDirection: "row", justifyContent: "space-between", paddingVertical: 5 },
-  totalsLabel:    { fontFamily: FONTS.regular, fontSize: SIZES.textSm, color: COLORS.textSecondary },
-  totalsVal:      { fontFamily: FONTS.semibold, fontSize: SIZES.textSm, color: COLORS.textPrimary },
-  totalFinalRow:  { flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: 6, paddingTop: 10 },
-  totalFinalLabel:{ fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: COLORS.textPrimary },
-  totalFinalAmt:  { fontFamily: FONTS.bold, fontSize: SIZES.textLg, color: "#3b82f6" },
+  totalsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 5,
+  },
+  totalsLabel: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textSm,
+    color: COLORS.textSecondary,
+  },
+  totalsVal: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textSm,
+    color: COLORS.textPrimary,
+  },
+  totalFinalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderTopWidth: 1.5,
+    borderTopColor: COLORS.border,
+    marginTop: 8,
+    paddingTop: 12,
+  },
+  totalFinalLabel: {
+    fontFamily: FONTS.extrabold,
+    fontSize: SIZES.textBase,
+    color: COLORS.textPrimary,
+  },
+  totalFinalAmt: {
+    fontFamily: FONTS.extrabold,
+    fontSize: SIZES.textLg,
+    color: "#1d4ed8",
+    letterSpacing: -0.3,
+  },
 
   // Payment row
   payRow: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    backgroundColor: COLORS.bgCard, borderRadius: SIZES.radiusMd,
-    padding: SIZES.md, marginBottom: SIZES.lg,
-    borderWidth: 1, borderColor: COLORS.borderLight, ...SHADOWS.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusLg,
+    padding: SIZES.md,
+    marginBottom: SIZES.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    ...SHADOWS.sm,
   },
-  payLbl:    { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted },
-  payVal:    { fontFamily: FONTS.semibold, fontSize: SIZES.textSm, color: COLORS.textPrimary },
-  payPill:   { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: SIZES.radiusFull, paddingHorizontal: 12, paddingVertical: 6 },
-  payPillTxt:{ fontFamily: FONTS.semibold, fontSize: SIZES.textXs },
+  payLbl: {
+    fontFamily: FONTS.regular,
+    fontSize: 10.5,
+    color: COLORS.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  payVal: {
+    marginTop: 3,
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textSm,
+    color: COLORS.textPrimary,
+  },
+  payPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: SIZES.radiusFull,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  payPillTxt: {
+    fontFamily: FONTS.extrabold,
+    fontSize: 11,
+    letterSpacing: 0.4,
+  },
 
-  notes: {
-    fontFamily: FONTS.regular, fontSize: SIZES.textSm,
-    color: COLORS.textMuted, fontStyle: "italic",
-    marginBottom: SIZES.lg,
+  // Notes
+  notesCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    padding: SIZES.md,
+  },
+  notesTxt: {
+    flex: 1,
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textSm,
+    color: COLORS.textMuted,
+    lineHeight: 20,
+  },
+
+  footer: {
+    marginTop: SIZES.md,
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+    textAlign: "center",
   },
 
   // Action bar
   actionBar: {
-    position: "absolute", left: 0, right: 0,
-    flexDirection: "row", gap: SIZES.sm,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    gap: SIZES.sm,
     padding: SIZES.md,
     backgroundColor: COLORS.bgCard,
-    borderTopWidth: 1, borderTopColor: COLORS.borderLight,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
     ...SHADOWS.md,
   },
   actionBtn: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    borderRadius: SIZES.radiusFull, paddingVertical: 13, gap: 7,
+    flex: 1,
+    borderRadius: SIZES.radiusFull,
+    overflow: "hidden",
+    ...SHADOWS.sm,
   },
-  actionTxt: { fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: COLORS.white },
+  actionBtnInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingVertical: 13,
+  },
+  actionTxt: {
+    fontFamily: FONTS.extrabold,
+    fontSize: SIZES.textBase,
+    color: COLORS.white,
+    letterSpacing: -0.1,
+  },
 });

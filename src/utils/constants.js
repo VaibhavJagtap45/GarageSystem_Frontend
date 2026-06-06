@@ -320,17 +320,10 @@ export const BOOKING_ENDPOINTS = {
   DETAIL:        (id) => `/bookings/${id}`,
   STATUS:        (id) => `/bookings/${id}/status`,
   CONVERT:       (id) => `/bookings/${id}/convert`,
-  SYNC_CALENDAR: (id) => `/bookings/${id}/calendar-sync`,
   MY_BOOKINGS:   "/customer/bookings",
   MY_CREATE:     "/customer/bookings",
   MY_CANCEL:     (id) => `/customer/bookings/${id}/cancel`,
   LINK_RO:       (id) => `/bookings/${id}/link-ro`,
-};
-
-export const GOOGLE_CALENDAR_ENDPOINTS = {
-  STATUS:      "/integrations/google-calendar/status",
-  CONNECT_URL: "/integrations/google-calendar/connect-url",
-  DISCONNECT:  "/integrations/google-calendar/disconnect",
 };
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
@@ -343,12 +336,13 @@ export const REPORTS_ENDPOINTS = {
   GST:               "/reports/gst",
 };
 
-// ─── STORAGE KEYS ────────────────────────────────────────────────────────────
+// ─── Billing ─────────────────────────────────────────────────────────────────
 export const STORAGE_KEYS = {
-  TOKEN:       "@access_token",
-  USER:        "@user",
-  GARAGE:      "@garage",
-  PREFERENCES: "@app_preferences",
+  TOKEN:            "@access_token",
+  TOKEN_EXPIRES_AT: "@access_token_expires_at",
+  USER:             "@user",
+  GARAGE:           "@garage",
+  PREFERENCES:      "@app_preferences",
 };
 
 // ─── RAW PALETTE ─────────────────────────────────────────────────────────────

@@ -170,7 +170,7 @@ const GENERAL_INIT = {
   applicability: "generic",
   services: [],
   parts: [],
-  laborTotal: 0,
+  servicesTotal: 0,
   partsTotal: 0,
   discount: 0,
   publishToPortal: false,
@@ -187,7 +187,7 @@ function CreatePackageModal({ visible, onClose, onSave }) {
 
   const grandTotal = Math.max(
     0,
-    form.laborTotal + form.partsTotal - form.discount,
+    form.servicesTotal + form.partsTotal - form.discount,
   );
 
   const validate = () => {
@@ -294,7 +294,7 @@ function CreatePackageModal({ visible, onClose, onSave }) {
 
       {/* Pricing */}
       <SectionCard title="Pricing Summary" icon="pricetag-outline">
-        <TotalRow label="Labor Total" value={form.laborTotal} />
+        <TotalRow label="Services Total" value={form.servicesTotal} />
         <TotalRow label="Parts Total" value={form.partsTotal} />
         <TotalRow label="Discount Applied" value={form.discount} />
         <View style={styles.totalDivider} />

@@ -5,8 +5,11 @@ import Loader from "../components/ui/Loader";
 import AuthStack from "./AuthStack";
 import { COLORS, FONTS } from "../utils/constants";
 import GarageTabs from "./GarageTabs";
-import CustomerMemberTabs from "./CustomerMemberTabs";
+import CustomerTabs from "./CustomerTabs";
+import MemberTabs from "./MemberTabs";
 import GarageDetails from "../screens/auth/GarageDetails";
+import UnsupportedRoleScreen from "../screens/auth/UnsupportedRoleScreen";
+import { getPortal } from "../utils/role";
 
 // Theme fonts required by native-stack
 const themeFonts = {
@@ -18,22 +21,35 @@ const themeFonts = {
 
 const Stack = createNativeStackNavigator();
 
+// Portal → root component. Centralizing this avoids the previous bug
+// where vendors silently landed on CustomerTabs because the old
+// "isLimitedRole" check lumped them in with customers.
+const PORTAL_COMPONENT = {
+  garage: GarageTabs,
+  customer: CustomerTabs,
+  member: MemberTabs,
+  unsupported: UnsupportedRoleScreen,
+};
+
 export default function AppNavigator() {
   const { isAuthenticated, loading, user, garage } = useSelector(
     (state) => state.auth,
   );
 
   if (loading) {
-    return <Loader fullScreen text="Loading Garage System..." />;
+    return <Loader fullScreen text="Loading Aapno Garage..." />;
   }
 
-  // ── Determine which authenticated home to show ───────────────────────────
-  // Owner whose garage profile isn't complete yet → onboarding
-  const isOwner = user?.role === "owner";
-  const needsOnboarding = isOwner && !garage?.isProfileComplete;
+  const portal = getPortal(user?.role);
+  const PortalRoot = PORTAL_COMPONENT[portal] ?? UnsupportedRoleScreen;
 
-  // customer / member / vendor get a simplified home
-  const isLimitedRole = ["customer", "member", "vendor"].includes(user?.role);
+  // Owners with an incomplete garage profile must finish onboarding
+  // first. We only enforce this for the garage portal — customer /
+  // member / vendor screens don't depend on the garage profile.
+  const needsOnboarding =
+    portal === "garage" &&
+    user?.role === "owner" &&
+    !garage?.isProfileComplete;
 
   return (
     <NavigationContainer
@@ -51,31 +67,23 @@ export default function AppNavigator() {
       }}
     >
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isAuthenticated ? (
+        {!isAuthenticated ? (
+          <Stack.Screen name="Auth" component={AuthStack} />
+        ) : needsOnboarding ? (
+          // First-time setup — GarageDetails is the initial screen.
+          // "App" is registered so GarageDetails can replace into it
+          // after save without rebuilding the stack.
           <>
-            {isLimitedRole ? (
-              // ── Customer / Member / Vendor ───────────────────────────────
-              <Stack.Screen name="App" component={CustomerMemberTabs} />
-            ) : needsOnboarding ? (
-              // ── Owner: first-time setup ──────────────────────────────────
-              // GarageDetails is first (initial screen).
-              // App is included so GarageDetails can call navigation.replace("App")
-              // after save — no stack restructure needed, no flicker.
-              <>
-                <Stack.Screen name="GarageDetails" component={GarageDetails} />
-                <Stack.Screen name="App" component={GarageTabs} />
-              </>
-            ) : (
-              // ── Owner with complete profile ──────────────────────────────
-              <>
-                <Stack.Screen name="App" component={GarageTabs} />
-                <Stack.Screen name="GarageDetails" component={GarageDetails} />
-              </>
-            )}
+            <Stack.Screen name="GarageDetails" component={GarageDetails} />
+            <Stack.Screen name="App" component={PortalRoot} />
           </>
         ) : (
-          // ── Unauthenticated ──────────────────────────────────────────────
-          <Stack.Screen name="Auth" component={AuthStack} />
+          <>
+            <Stack.Screen name="App" component={PortalRoot} />
+            {portal === "garage" && (
+              <Stack.Screen name="GarageDetails" component={GarageDetails} />
+            )}
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

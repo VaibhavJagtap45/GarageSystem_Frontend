@@ -17,6 +17,8 @@ import { inr } from "../../utils/portalHelpers";
 import NavBar from "../../components/portal/NavBar";
 import Empty from "../../components/portal/Empty";
 import M from "../../components/portal/modalStyles";
+import PortalHeroCard from "../../components/portal/PortalHeroCard";
+import SectionHeader from "../../components/portal/SectionHeader";
 
 // ─── Date / Time helpers ────────────────────────────────────────────────────
 const DAY_NAMES  = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -99,6 +101,8 @@ export default function CustomerServices({ navigation }) {
   useFocusEffect(useCallback(() => { load(); }, [load]));
   useEffect(() => { load(); }, [load]);
 
+  const selectedTotal = picked.reduce((sum, svc) => sum + (svc.mrp || 0), 0);
+
   const toggle = (svc) =>
     setPicked((p) =>
       p.some((x) => x._id === svc._id)
@@ -156,8 +160,24 @@ export default function CustomerServices({ navigation }) {
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <NavBar title="Services" />
 
+      <PortalHeroCard
+        eyebrow="Customer portal"
+        title="Choose services and schedule a clean handoff."
+        subtitle="Browse the catalog, pick what you need, and send one polished booking request."
+        icon="construct-outline"
+        stats={[
+          { label: "Services", value: String(services.length) },
+          { label: "Selected", value: String(picked.length) },
+          { label: "Categories", value: String(cats.length) },
+        ]}
+      />
+
       {/* Search */}
       <View style={s.srow}>
+        <SectionHeader
+          title="Service catalog"
+          subtitle="Search, filter by category, and select multiple services in one go."
+        />
         <View style={s.sbox}>
           <Ionicons name="search-outline" size={15} color={COLORS.textMuted} />
           <TextInput
@@ -192,11 +212,35 @@ export default function CustomerServices({ navigation }) {
       {loading ? (
         <ActivityIndicator color={COLORS.primary} style={{ marginTop: 40 }} />
       ) : services.length === 0 ? (
-        <Empty icon="construct-outline" title="No services found" sub="Try a different search" />
+        <Empty
+          icon="construct-outline"
+          title="No services found"
+          sub="Try a different search or change the category filter."
+        />
       ) : (
         <ScrollView
           contentContainerStyle={{ padding: SIZES.screenPadding, paddingBottom: picked.length ? 100 : 24 }}
         >
+          {picked.length > 0 && (
+            <View style={s.selectionCard}>
+              <View style={s.selectionCopy}>
+                <Text style={s.selectionTitle}>
+                  {picked.length} service{picked.length > 1 ? "s" : ""} selected
+                </Text>
+                <Text style={s.selectionSub}>
+                  Estimated selection total {inr(selectedTotal)}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={s.selectionAction}
+                onPress={() => setPicked([])}
+                activeOpacity={0.8}
+              >
+                <Text style={s.selectionActionText}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {services.map((svc) => {
             const sel = picked.some((x) => x._id === svc._id);
             return (
@@ -381,18 +425,35 @@ export default function CustomerServices({ navigation }) {
 const s = StyleSheet.create({
   // ── Service list ──────────────────────────────────────────────────────────
   srow:       { paddingHorizontal: SIZES.screenPadding, paddingVertical: SIZES.sm },
-  sbox:       { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.bgCard, borderRadius: SIZES.radiusFull, paddingHorizontal: SIZES.md, paddingVertical: 8, borderWidth: 1, borderColor: COLORS.borderLight, gap: 8 },
+  sbox:       { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.bgCard, borderRadius: SIZES.radiusFull, paddingHorizontal: SIZES.md, paddingVertical: 10, borderWidth: 1, borderColor: COLORS.borderLight, gap: 8, ...SHADOWS.sm },
   sinput:     { flex: 1, fontFamily: FONTS.regular, fontSize: SIZES.textSm, color: COLORS.textPrimary },
   chip:       { paddingHorizontal: 14, paddingVertical: 6, borderRadius: SIZES.radiusFull, borderWidth: 1, borderColor: COLORS.borderLight, backgroundColor: COLORS.bgCard },
   chipOn:     { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   chipTxt:    { fontFamily: FONTS.medium, fontSize: SIZES.textXs, color: COLORS.textSecondary },
   chipTxtOn:  { color: COLORS.white },
-  card:       { flexDirection: "row", backgroundColor: COLORS.bgCard, borderRadius: SIZES.radiusMd, padding: SIZES.md, marginBottom: SIZES.sm, borderWidth: 1.5, borderColor: COLORS.borderLight, ...SHADOWS.sm },
-  cardOn:     { borderColor: COLORS.primary, backgroundColor: COLORS.primary + "10" },
+  selectionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: SIZES.sm,
+    backgroundColor: "#dbeafe",
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
+    padding: SIZES.md,
+    marginBottom: SIZES.md,
+  },
+  selectionCopy: { flex: 1 },
+  selectionTitle: { fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: "#1d4ed8" },
+  selectionSub: { marginTop: 3, fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textSecondary },
+  selectionAction: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: SIZES.radiusFull, backgroundColor: COLORS.white },
+  selectionActionText: { fontFamily: FONTS.semibold, fontSize: SIZES.textXs, color: "#1d4ed8" },
+  card:       { flexDirection: "row", backgroundColor: COLORS.bgCard, borderRadius: SIZES.radiusLg, padding: SIZES.md, marginBottom: SIZES.sm, borderWidth: 1.5, borderColor: COLORS.borderLight, ...SHADOWS.sm },
+  cardOn:     { borderColor: "#93c5fd", backgroundColor: "#eff6ff" },
   sname:      { fontFamily: FONTS.semibold, fontSize: SIZES.textBase, color: COLORS.textPrimary },
   scat:       { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted, marginTop: 2 },
-  applicable: { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.primary, marginTop: 2 },
-  smrp:       { fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: COLORS.primary },
+  applicable: { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: "#2563eb", marginTop: 2 },
+  smrp:       { fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: "#2563eb" },
   fab:        { position: "absolute", bottom: 16, left: SIZES.screenPadding, right: SIZES.screenPadding },
   fabBtn:     { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: COLORS.primary, borderRadius: SIZES.radiusFull, padding: 14, gap: 8, ...SHADOWS.md },
   fabTxt:     { fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: COLORS.white },

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   COLORS, FONTS, SIZES, SHADOWS,
   STOCK_IN_ENDPOINTS,
@@ -136,6 +137,7 @@ function StockItemRow({ item, index, onRemove, onQtyChange, onPriceChange }) {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function StockInScreen() {
   const [date,            setDate]            = useState(todayISO());
+  const [showDatePicker,  setShowDatePicker]  = useState(false);
   const [invoiceNo,       setInvoiceNo]       = useState("");
   const [linkPO,          setLinkPO]          = useState(false);
   const [vendorId,        setVendorId]        = useState(null);
@@ -213,6 +215,18 @@ export default function StockInScreen() {
 
   const totalAmount = items.reduce((s, it) => s + (it.lineTotal || 0), 0);
 
+  const dateValue = useMemo(() => {
+    const parsed = new Date(date);
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  }, [date]);
+
+  const handleDateChange = (event, selectedDate) => {
+    if (Platform.OS === "android") setShowDatePicker(false);
+    if (selectedDate) {
+      setDate(selectedDate.toISOString().split("T")[0]);
+    }
+  };
+
   const handleSave = async () => {
     if (!items.length) {
       Alert.alert("No Items", "Add at least one part/stock item.");
@@ -261,14 +275,29 @@ export default function StockInScreen() {
       >
         {/* Row 1: Date + Invoice No */}
         <View style={s.row}>
-          <AppInput
-            label="Date"
-            icon="calendar-outline"
-            value={date}
-            onChangeText={setDate}
-            placeholder="YYYY-MM-DD"
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setShowDatePicker(true)}
             style={{ flex: 1.2 }}
-          />
+          >
+            <AppInput
+              label="Date"
+              icon="calendar-outline"
+              value={date}
+              placeholder="YYYY-MM-DD"
+              editable={false}
+              pointerEvents="none"
+            />
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={dateValue}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              maximumDate={new Date()}
+              onChange={handleDateChange}
+            />
+          )}
           <AppInput
             label="Invoice No."
             icon="document-outline"

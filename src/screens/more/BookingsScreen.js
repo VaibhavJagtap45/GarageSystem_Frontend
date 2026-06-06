@@ -38,7 +38,6 @@ import {
   listBookings,
   createBooking,
   updateBookingStatus,
-  syncBookingCalendar,
 } from "../../api/booking";
 import { addUser } from "../../api/user";
 
@@ -60,15 +59,6 @@ const STATUS_META = {
   in_progress: { bg: "#DBEAFE", text: "#2563EB", label: "In Progress" },
   completed:   { bg: "#F3F4F6", text: "#374151", label: "Completed" },
   cancelled:   { bg: "#FEE2E2", text: "#DC2626", label: "Cancelled" },
-};
-
-const CALENDAR_SYNC_META = {
-  synced:         { bg: "#D1FAE5", text: "#059669", icon: "checkmark-circle-outline", label: "Google Calendar synced" },
-  failed:         { bg: "#FEE2E2", text: "#DC2626", icon: "alert-circle-outline", label: "Calendar sync failed" },
-  not_connected:  { bg: "#FEF3C7", text: "#D97706", icon: "link-outline", label: "Connect Google Calendar" },
-  not_configured: { bg: "#FEF3C7", text: "#D97706", icon: "settings-outline", label: "Calendar setup required" },
-  deleted:        { bg: "#F3F4F6", text: "#374151", icon: "trash-outline", label: "Calendar event removed" },
-  not_synced:     { bg: "#EFF6FF", text: "#2563EB", icon: "cloud-upload-outline", label: "Calendar not synced" },
 };
 
 const DAY_NAMES   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -138,7 +128,6 @@ function BookingCard({
   garageName,
   onStatusChange,
   onCreateRO,
-  onRetryCalendarSync,
   navigation,
 }) {
   const { status } = booking;
@@ -148,12 +137,6 @@ function BookingCard({
   const rawPhone = (customer.phoneNo || "").replace(/\D/g, "");
   const phone    = rawPhone.startsWith("91") ? rawPhone : `91${rawPhone}`;
   const canAct   = status === "pending" || status === "confirmed";
-  const calendarStatus =
-    booking.googleCalendar?.syncStatus ||
-    (status === "confirmed" ? "not_synced" : null);
-  const calendarMeta = calendarStatus
-    ? CALENDAR_SYNC_META[calendarStatus] || CALENDAR_SYNC_META.not_synced
-    : null;
 
   const shareWhatsApp = () => {
     const text = encodeURIComponent(buildShareText(booking, garageName));
@@ -168,22 +151,6 @@ function BookingCard({
       ? `sms:+${phone}&body=${body}`
       : `sms:+${phone}?body=${body}`;
     Linking.openURL(url).catch(() => Alert.alert("Error", "Could not open SMS."));
-  };
-
-  const handleCalendarAction = () => {
-    if (booking.googleCalendar?.htmlLink) {
-      Linking.openURL(booking.googleCalendar.htmlLink).catch(() =>
-        Alert.alert("Error", "Could not open Google Calendar."),
-      );
-      return;
-    }
-    if (calendarStatus === "not_connected" || calendarStatus === "not_configured") {
-      navigation.navigate("GoogleCalendarSettings");
-      return;
-    }
-    if (status === "confirmed") {
-      onRetryCalendarSync(booking);
-    }
   };
 
   return (
@@ -242,37 +209,6 @@ function BookingCard({
         </Text>
       </View>
 
-      {calendarMeta ? (
-        <View style={[styles.calendarSyncBox, { backgroundColor: calendarMeta.bg }]}>
-          <Ionicons name={calendarMeta.icon} size={14} color={calendarMeta.text} />
-          <Text style={[styles.calendarSyncText, { color: calendarMeta.text }]}>
-            {calendarMeta.label}
-          </Text>
-          {booking.googleCalendar?.lastError ? (
-            <Text
-              style={[styles.calendarSyncError, { color: calendarMeta.text }]}
-              numberOfLines={1}
-            >
-              {booking.googleCalendar.lastError}
-            </Text>
-          ) : null}
-          {["failed", "not_synced"].includes(calendarStatus) ? (
-            <TouchableOpacity onPress={() => onRetryCalendarSync(booking)}>
-              <Text style={[styles.calendarSyncAction, { color: calendarMeta.text }]}>
-                Retry
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-          {["not_connected", "not_configured"].includes(calendarStatus) ? (
-            <TouchableOpacity onPress={() => navigation.navigate("GoogleCalendarSettings")}>
-              <Text style={[styles.calendarSyncAction, { color: calendarMeta.text }]}>
-                Setup
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
-      ) : null}
-
       {/* Service */}
       {booking.serviceType ? (
         <View style={styles.infoRow}>
@@ -312,14 +248,6 @@ function BookingCard({
           <Ionicons name="chatbubble-ellipses-outline" size={15} color={COLORS.textSecondary} />
           <Text style={styles.shareBtnText}>SMS</Text>
         </TouchableOpacity>
-        {(status === "confirmed" || booking.googleCalendar?.htmlLink) && (
-          <TouchableOpacity style={styles.shareBtn} onPress={handleCalendarAction}>
-            <Ionicons name="calendar-outline" size={15} color={COLORS.error} />
-            <Text style={[styles.shareBtnText, { color: COLORS.error }]}>
-              {booking.googleCalendar?.htmlLink ? "Open Event" : "Sync Calendar"}
-            </Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Action buttons */}
@@ -909,7 +837,6 @@ export default function BookingsScreen() {
             try {
               const res = await updateBookingStatus(id, newStatus);
               const updatedBooking = res.data?.booking;
-              const calendarSync = res.data?.calendarSync;
               if (updatedBooking) {
                 setBookings((prev) =>
                   prev.map((b) => b._id === id ? { ...b, ...updatedBooking } : b),
@@ -921,12 +848,7 @@ export default function BookingsScreen() {
                 const p   = raw.startsWith("91") ? raw : `91${raw}`;
                 const confirmedBooking = updatedBooking || { ...booking, status: "confirmed" };
                 const txt = encodeURIComponent(buildShareText(confirmedBooking, garageName));
-                const syncLine = calendarSync
-                  ? calendarSync.ok
-                    ? "Added to Google Calendar. "
-                    : `${calendarSync.message || "Google Calendar sync needs attention."} `
-                  : "";
-                Alert.alert("Booking Confirmed!", `${syncLine}Share confirmation with customer?`, [
+                Alert.alert("Booking Confirmed!", "Share confirmation with customer?", [
                   { text: "Skip" },
                   {
                     text: "WhatsApp",
@@ -949,43 +871,6 @@ export default function BookingsScreen() {
   };
 
   // ── Create Advance RO ─────────────────────────────────────────────
-  // Retry backend Google Calendar sync for confirmed bookings.
-  const handleRetryCalendarSync = async (booking) => {
-    setBookings((prev) =>
-      prev.map((b) =>
-        b._id === booking._id
-          ? {
-              ...b,
-              googleCalendar: {
-                ...(b.googleCalendar || {}),
-                syncStatus: "not_synced",
-                lastError: null,
-              },
-            }
-          : b,
-      ),
-    );
-    try {
-      const res = await syncBookingCalendar(booking._id);
-      const updatedBooking = res.data?.booking;
-      const calendarSync = res.data?.calendarSync;
-      if (updatedBooking) {
-        setBookings((prev) =>
-          prev.map((b) => b._id === booking._id ? { ...b, ...updatedBooking } : b),
-        );
-      }
-      Alert.alert(
-        calendarSync?.ok ? "Calendar Synced" : "Calendar Sync",
-        calendarSync?.ok
-          ? "Booking added to Google Calendar."
-          : calendarSync?.message || "Google Calendar sync needs attention.",
-      );
-    } catch (err) {
-      load({ silent: true });
-      Alert.alert("Error", err.displayMessage || "Could not sync Google Calendar.");
-    }
-  };
-
   // Navigates to CustomerRepairOrderScreen with booking data pre-filled.
   // After RO is saved, the screen calls linkRepairOrder automatically.
   const handleCreateRO = (booking) => {
@@ -1077,7 +962,6 @@ export default function BookingsScreen() {
               garageName={garageName}
               onStatusChange={handleStatusChange}
               onCreateRO={handleCreateRO}
-              onRetryCalendarSync={handleRetryCalendarSync}
               navigation={navigation}
             />
           )}
@@ -1221,29 +1105,6 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     flex: 1,
   },
-  calendarSyncBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    borderRadius: SIZES.radiusMd,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    marginTop: 2,
-  },
-  calendarSyncText: {
-    fontFamily: FONTS.semibold,
-    fontSize: SIZES.textXs,
-  },
-  calendarSyncError: {
-    flex: 1,
-    fontFamily: FONTS.regular,
-    fontSize: 10,
-  },
-  calendarSyncAction: {
-    fontFamily: FONTS.bold,
-    fontSize: SIZES.textXs,
-  },
-
   shareRow: {
     flexDirection: "row",
     gap: 14,

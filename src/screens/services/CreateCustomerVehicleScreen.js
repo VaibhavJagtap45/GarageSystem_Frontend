@@ -405,13 +405,29 @@ function VehicleStep({
           error={errors.vehicleRegisterNo}
         />
 
-        <AppInput
-          label="Variant / Trim"
-          icon="layers-outline"
-          placeholder="e.g. Diesel, AMT, V3 (optional)"
-          value={form.vehicleVariant}
-          onChangeText={setField("vehicleVariant")}
-        />
+        <RowFields>
+          <RowField>
+            <AppInput
+              label="Variant / Trim"
+              icon="layers-outline"
+              placeholder="e.g. Diesel, AMT (optional)"
+              value={form.vehicleVariant}
+              onChangeText={setField("vehicleVariant")}
+            />
+          </RowField>
+          <RowField>
+            <AppInput
+              label="Km Driven"
+              icon="speedometer-outline"
+              placeholder="e.g. 12500"
+              value={form.vehicleKmDriven}
+              onChangeText={setField("vehicleKmDriven")}
+              keyboardType="numeric"
+              maxLength={7}
+              error={errors.vehicleKmDriven}
+            />
+          </RowField>
+        </RowFields>
       </SectionCard>
 
       <SectionCard
@@ -527,6 +543,15 @@ function ReviewStep({ form }) {
             value={form.vehicleVariant}
           />
         )}
+        {form.vehicleKmDriven !== "" && form.vehicleKmDriven != null && (
+          <ReviewRow
+            icon="speedometer-outline"
+            label="Km Driven"
+            value={`${new Intl.NumberFormat("en-IN").format(
+              Number(form.vehicleKmDriven) || 0,
+            )} km`}
+          />
+        )}
         {form.vehicleEngineNo && (
           <ReviewRow
             icon="settings-outline"
@@ -564,6 +589,7 @@ const FORM_INIT = {
   vehicleModel: null,
   vehicleRegisterNo: "",
   vehicleVariant: "",
+  vehicleKmDriven: "",
   vehicleEngineNo: "",
   vehicleVinNo: "",
   vehicleInsuranceProvider: "",
@@ -666,6 +692,11 @@ export default function CreateCustomerVehicleScreen() {
     if (!form.vehicleModel) e.vehicleModel = "Model is required";
     if (!form.vehicleRegisterNo.trim())
       e.vehicleRegisterNo = "Registration number is required";
+    if (form.vehicleKmDriven !== "" && form.vehicleKmDriven != null) {
+      const km = Number(form.vehicleKmDriven);
+      if (!Number.isFinite(km) || km < 0 || !Number.isInteger(km))
+        e.vehicleKmDriven = "Enter a valid non-negative number";
+    }
     setErrors(e);
     return !Object.keys(e).length;
   };
@@ -696,6 +727,12 @@ export default function CreateCustomerVehicleScreen() {
         vehicleBrand: form.vehicleBrand,
         vehicleModel: form.vehicleModel,
         vehicleRegisterNo: form.vehicleRegisterNo.trim().toUpperCase(),
+        ...(form.vehicleVariant.trim() && {
+          vehicleVariant: form.vehicleVariant.trim(),
+        }),
+        ...(form.vehicleKmDriven !== "" && form.vehicleKmDriven != null && {
+          vehicleKmDriven: Number(form.vehicleKmDriven),
+        }),
         ...(form.vehicleEngineNo.trim() && {
           vehicleEngineNo: form.vehicleEngineNo.trim(),
         }),

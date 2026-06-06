@@ -8,6 +8,7 @@ import MemberOrderDetail from "../screens/member/MemberOrderDetail";
 import MemberInventory   from "../screens/member/MemberInventory";
 import MemberHistory     from "../screens/member/MemberHistory";
 import MemberProfile     from "../screens/member/MemberProfile";
+import ChangePasswordScreen from "../screens/auth/OtpScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -32,6 +33,16 @@ function MHistoryStack() {
   );
 }
 
+// ── Profile stack: Profile → ChangePassword
+function MProfileStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MProfileMain"  component={MemberProfile} />
+      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+    </Stack.Navigator>
+  );
+}
+
 const TABS = [
   { label: "Home",      icon: "home-outline",           iconFilled: "home"           },
   { label: "Work",      icon: "hammer-outline",         iconFilled: "hammer"         },
@@ -50,7 +61,7 @@ export default function MemberTabs() {
       <Tab.Screen name="Work"      component={MWorkStack} />
       <Tab.Screen name="Inventory" component={MemberInventory} />
       <Tab.Screen name="History"   component={MHistoryStack} />
-      <Tab.Screen name="Profile"   component={MemberProfile} />
+      <Tab.Screen name="Profile"   component={MProfileStack} />
     </Tab.Navigator>
   );
 }

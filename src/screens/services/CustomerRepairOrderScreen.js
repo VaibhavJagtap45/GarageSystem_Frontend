@@ -1,1165 +1,3 @@
-// import React, { useState, useCallback } from "react";
-// import {
-//   View,
-//   Text,
-//   StyleSheet,
-//   TouchableOpacity,
-//   ScrollView,
-//   Alert,
-//   Platform,
-//   Modal,
-//   KeyboardAvoidingView,
-//   TextInput,
-//   ActivityIndicator,
-// } from "react-native";
-// import { SafeAreaView } from "react-native-safe-area-context";
-// import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-// import { useNavigation } from "@react-navigation/native";
-// import { COLORS, FONTS, SIZES, SHADOWS } from "../../utils/constants";
-// import TopNav from "../../components/ui/TopNav";
-// import AppInput from "../../components/ui/AppInput";
-// import AppButton from "../../components/ui/AppButton";
-// import AppToggle from "../../components/ui/AppToggle";
-// import axiosClient from "../../api/axios";
-// import {
-//   REPAIR_ORDER_ENDPOINTS,
-//   CATALOG_ENDPOINTS,
-// } from "../../utils/constants";
-
-// // ─── Helpers ──────────────────────────────────────────────────────────────────
-// const fmt = (n) => (n > 0 ? `₹${parseFloat(n).toFixed(2)}` : "");
-// const calcLineTotal = (price, qty, disc, tax) => {
-//   const base = (parseFloat(price) || 0) * (parseInt(qty) || 1);
-//   const afterDisc = base - (parseFloat(disc) || 0);
-//   const taxAmt = afterDisc * ((parseFloat(tax) || 0) / 100);
-//   return +(afterDisc + taxAmt).toFixed(2);
-// };
-
-// // ─── Search Phase ─────────────────────────────────────────────────────────────
-// function SearchPhase({ onFound }) {
-//   const [regNo, setRegNo] = useState("");
-//   const [loading, setLoading] = useState(false);
-//   const [error, setError] = useState(null);
-
-//   const handleSearch = async () => {
-//     const q = regNo.trim().toUpperCase();
-//     if (!q) {
-//       setError("Please enter a registration number");
-//       return;
-//     }
-//     setError(null);
-//     setLoading(true);
-//     try {
-//       const res = await axiosClient.get(REPAIR_ORDER_ENDPOINTS.SEARCH_VEHICLE, {
-//         params: { regNo: q },
-//       });
-//       onFound(res.data.data);
-//     } catch (e) {
-//       setError(
-//         e.response?.data?.message || e.displayMessage || "Vehicle not found.",
-//       );
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   return (
-//     <View style={styles.searchPhase}>
-//       <View style={styles.searchCard}>
-//         <Ionicons
-//           name="car-outline"
-//           size={40}
-//           color={COLORS.primary}
-//           style={{ marginBottom: SIZES.md }}
-//         />
-//         <Text style={styles.searchTitle}>Find Customer Vehicle</Text>
-//         <Text style={styles.searchSubtitle}>
-//           Enter the vehicle registration number to load customer details
-//         </Text>
-//         <AppInput
-//           label="Registration Number"
-//           icon="id-card-outline"
-//           placeholder="MH12AB1234"
-//           value={regNo}
-//           onChangeText={(t) => {
-//             setRegNo(t);
-//             setError(null);
-//           }}
-//           autoCapitalize="characters"
-//           error={error}
-//         />
-//         <AppButton
-//           title={loading ? "Searching…" : "Search Vehicle"}
-//           variant="gradient"
-//           size="lg"
-//           onPress={handleSearch}
-//           disabled={loading}
-//           leftIcon="search-outline"
-//         />
-//       </View>
-//       <Text style={styles.orText}>— or —</Text>
-//       <AppButton
-//         title="Create New Customer + Vehicle"
-//         variant="outline"
-//         size="lg"
-//         onPress={() => Alert.alert("Coming soon", "Customer creation flow.")}
-//       />
-//     </View>
-//   );
-// }
-
-// // ─── Editable field inline ────────────────────────────────────────────────────
-// function InlineEdit({ value, onSave, placeholder, style }) {
-//   const [editing, setEditing] = useState(false);
-//   const [local, setLocal] = useState(value);
-//   if (editing) {
-//     return (
-//       <TextInput
-//         style={[styles.inlineInput, style]}
-//         value={local}
-//         onChangeText={setLocal}
-//         autoFocus
-//         onBlur={() => {
-//           setEditing(false);
-//           onSave(local);
-//         }}
-//         placeholder={placeholder}
-//         placeholderTextColor={COLORS.textMuted}
-//       />
-//     );
-//   }
-//   return (
-//     <TouchableOpacity
-//       style={styles.inlineRow}
-//       onPress={() => setEditing(true)}
-//       activeOpacity={0.7}
-//     >
-//       <Text
-//         style={[styles.inlineValue, !value && styles.inlinePlaceholder, style]}
-//       >
-//         {value || placeholder}
-//       </Text>
-//       <Ionicons name="create-outline" size={14} color={COLORS.textMuted} />
-//     </TouchableOpacity>
-//   );
-// }
-
-// // ─── Customer + Vehicle header card ──────────────────────────────────────────
-// function CustomerVehicleCard({
-//   customer,
-//   vehicle,
-//   onChangeVehicle,
-//   form,
-//   setFormField,
-// }) {
-//   return (
-//     <View style={styles.cvCard}>
-//       {/* Left — customer */}
-//       <View style={styles.cvLeft}>
-//         <Text style={styles.cvName}>{customer?.fullName || "—"}</Text>
-//         <Text style={styles.cvPhone}>{customer?.phoneNo || "—"}</Text>
-//       </View>
-//       {/* Divider */}
-//       <View style={styles.cvDivider} />
-//       {/* Right — vehicle */}
-//       <View style={styles.cvRight}>
-//         <TouchableOpacity
-//           onPress={onChangeVehicle}
-//           style={styles.cvVehicleRow}
-//           activeOpacity={0.7}
-//         >
-//           <Text style={styles.cvVehicle}>
-//             {vehicle?.vehicleBrand} {vehicle?.vehicleModel}
-//           </Text>
-//           <Ionicons name="create-outline" size={13} color={COLORS.textMuted} />
-//         </TouchableOpacity>
-//         {/* Variant editable */}
-//         <InlineEdit
-//           value={form.vehicleVariant}
-//           onSave={setFormField("vehicleVariant")}
-//           placeholder="Variant"
-//           style={{ fontSize: SIZES.textXs, color: COLORS.textMuted }}
-//         />
-//         {/* Odometer editable */}
-//         <TouchableOpacity
-//           style={styles.inlineRow}
-//           onPress={() => {}}
-//           activeOpacity={0.7}
-//         >
-//           <Text style={styles.odometerLabel}>Odometer: </Text>
-//           <InlineEdit
-//             value={form.odometerReading ? String(form.odometerReading) : ""}
-//             onSave={(v) =>
-//               setFormField("odometerReading")(v ? parseInt(v, 10) : null)
-//             }
-//             placeholder="KMs"
-//             style={{ fontSize: SIZES.textXs }}
-//           />
-//         </TouchableOpacity>
-//       </View>
-//     </View>
-//   );
-// }
-
-// // ─── Section block (services / parts / images / tags etc.) ────────────────────
-// function SectionBlock({ label, onAdd, children }) {
-//   return (
-//     <View style={styles.sectionBlock}>
-//       <View style={styles.sectionHeader}>
-//         <Text style={styles.sectionLabel}>{label}</Text>
-//         <TouchableOpacity
-//           style={styles.addChip}
-//           onPress={onAdd}
-//           activeOpacity={0.8}
-//         >
-//           <Ionicons name="add-circle" size={15} color={COLORS.white} />
-//           <Text style={styles.addChipText}>Add</Text>
-//         </TouchableOpacity>
-//       </View>
-//       {children}
-//     </View>
-//   );
-// }
-
-// // ─── Service line row ─────────────────────────────────────────────────────────
-// function ServiceLineRow({ item, index, onRemove, onChange, applyDiscount }) {
-//   return (
-//     <View style={styles.lineRow}>
-//       <View style={{ flex: 3, paddingRight: 4 }}>
-//         <Text style={styles.lineName} numberOfLines={1}>
-//           {item.name}
-//         </Text>
-//         {applyDiscount && (
-//           <Text style={styles.lineDisc}>Disc: ₹{item.discount || 0}</Text>
-//         )}
-//       </View>
-//       <Text style={styles.linePrice}>₹{item.price || 0}</Text>
-//       <TouchableOpacity
-//         onPress={() => onRemove(index)}
-//         style={styles.lineRemove}
-//       >
-//         <Ionicons name="close-circle" size={18} color={COLORS.error} />
-//       </TouchableOpacity>
-//     </View>
-//   );
-// }
-
-// // ─── Part line row ────────────────────────────────────────────────────────────
-// function PartLineRow({ item, index, onRemove, applyDiscount }) {
-//   return (
-//     <View style={styles.lineRow}>
-//       <View style={{ flex: 3, paddingRight: 4 }}>
-//         <Text style={styles.lineName} numberOfLines={1}>
-//           {item.name}
-//         </Text>
-//         <Text style={styles.lineSub}>
-//           Qty: {item.quantity} ₹{item.unitPrice}
-//         </Text>
-//         {applyDiscount && (
-//           <Text style={styles.lineDisc}>Disc: ₹{item.discount || 0}</Text>
-//         )}
-//       </View>
-//       <Text style={styles.linePrice}>₹{item.lineTotal || 0}</Text>
-//       <TouchableOpacity
-//         onPress={() => onRemove(index)}
-//         style={styles.lineRemove}
-//       >
-//         <Ionicons name="close-circle" size={18} color={COLORS.error} />
-//       </TouchableOpacity>
-//     </View>
-//   );
-// }
-
-// // ─── Add Service/Part picker modal ────────────────────────────────────────────
-// function CatalogPickerModal({ visible, itemType, onClose, onSelect }) {
-//   const [items, setItems] = useState([]);
-//   const [search, setSearch] = useState("");
-//   const [loading, setLoading] = useState(false);
-
-//   const load = useCallback(async () => {
-//     setLoading(true);
-//     try {
-//       const res = await axiosClient.get(CATALOG_ENDPOINTS.LIST, {
-//         params: { itemType, search: search || undefined, limit: 100 },
-//       });
-//       setItems(res.data?.data?.items || []);
-//     } catch {
-//       setItems([]);
-//     } finally {
-//       setLoading(false);
-//     }
-//   }, [itemType, search]);
-
-//   React.useEffect(() => {
-//     if (visible) load();
-//   }, [visible, load]);
-
-//   const isPart = itemType === "part";
-
-//   return (
-//     <Modal
-//       visible={visible}
-//       animationType="slide"
-//       presentationStyle="pageSheet"
-//       onRequestClose={onClose}
-//     >
-//       <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-//         <View style={styles.pickerHeader}>
-//           <Text style={styles.pickerTitle}>
-//             {isPart ? "Add Part" : "Add Service"}
-//           </Text>
-//           <TouchableOpacity onPress={onClose} style={styles.pickerClose}>
-//             <Ionicons name="close" size={20} color={COLORS.textPrimary} />
-//           </TouchableOpacity>
-//         </View>
-//         <View style={styles.pickerSearch}>
-//           <AppInput
-//             icon="search-outline"
-//             placeholder={`Search ${isPart ? "parts" : "services"}…`}
-//             value={search}
-//             onChangeText={setSearch}
-//           />
-//         </View>
-//         {loading ? (
-//           <ActivityIndicator color={COLORS.primary} style={{ marginTop: 40 }} />
-//         ) : (
-//           <ScrollView
-//             contentContainerStyle={{
-//               padding: SIZES.screenPadding,
-//               gap: SIZES.sm,
-//             }}
-//           >
-//             {items.map((item) => (
-//               <TouchableOpacity
-//                 key={item._id}
-//                 style={styles.pickerItem}
-//                 onPress={() => {
-//                   onSelect(item);
-//                   onClose();
-//                 }}
-//                 activeOpacity={0.7}
-//               >
-//                 <View style={{ flex: 1 }}>
-//                   <Text style={styles.pickerItemName}>{item.name}</Text>
-//                   {item.category ? (
-//                     <Text style={styles.pickerItemSub}>{item.category}</Text>
-//                   ) : null}
-//                 </View>
-//                 <Text style={styles.pickerItemPrice}>
-//                   {item.mrp > 0 ? `₹${item.mrp}` : "Free"}
-//                 </Text>
-//                 <Ionicons
-//                   name="add-circle-outline"
-//                   size={22}
-//                   color={COLORS.primary}
-//                 />
-//               </TouchableOpacity>
-//             ))}
-//             {!loading && items.length === 0 && (
-//               <Text style={styles.pickerEmpty}>
-//                 No {isPart ? "parts" : "services"} found.
-//               </Text>
-//             )}
-//           </ScrollView>
-//         )}
-//       </SafeAreaView>
-//     </Modal>
-//   );
-// }
-
-// // ─── Total row ────────────────────────────────────────────────────────────────
-// function TotalRow({ label, value, highlight }) {
-//   return (
-//     <View style={[styles.totalRow, highlight && styles.totalRowHL]}>
-//       <Text style={[styles.totalLabel, highlight && styles.totalLabelHL]}>
-//         {label}
-//       </Text>
-//       <View style={[styles.totalValueBox, highlight && styles.totalValueBoxHL]}>
-//         {value !== null && value !== "" && (
-//           <Text style={styles.totalRupee}>₹</Text>
-//         )}
-//         <Text style={[styles.totalValue, highlight && styles.totalValueHL]}>
-//           {value !== null && value !== "" ? parseFloat(value).toFixed(2) : ""}
-//         </Text>
-//       </View>
-//     </View>
-//   );
-// }
-
-// // ─── Main Screen ──────────────────────────────────────────────────────────────
-// export default function CustomerRepairOrderScreen() {
-//   const navigation = useNavigation();
-
-//   // Phase: "search" | "order"
-//   const [phase, setPhase] = useState("search");
-//   const [customer, setCustomer] = useState(null);
-//   const [vehicle, setVehicle] = useState(null);
-
-//   // Form state
-//   const [form, setForm] = useState({
-//     vehicleVariant: "",
-//     odometerReading: null,
-//     services: [],
-//     applyDiscountToAllServices: false,
-//     parts: [],
-//     applyDiscountToAllParts: false,
-//     images: [],
-//     tags: [],
-//     customerRemarks: [],
-//     estimatedDeliveryAt: new Date(
-//       Date.now() + 6 * 60 * 60 * 1000,
-//     ).toISOString(),
-//     notifyCustomer: false,
-//   });
-
-//   const setFormField = (key) => (val) => setForm((p) => ({ ...p, [key]: val }));
-
-//   // Pickers
-//   const [showServicePicker, setShowServicePicker] = useState(false);
-//   const [showPartPicker, setShowPartPicker] = useState(false);
-
-//   // Saving
-//   const [saving, setSaving] = useState(false);
-
-//   // ── Handle vehicle found ──────────────────────────────────────────
-//   const handleFound = ({ vehicle: v, customer: c }) => {
-//     setVehicle(v);
-//     setCustomer(c);
-//     setPhase("order");
-//   };
-
-//   // ── Remove helpers ────────────────────────────────────────────────
-//   const removeService = (i) =>
-//     setFormField("services")(form.services.filter((_, idx) => idx !== i));
-//   const removePart = (i) =>
-//     setFormField("parts")(form.parts.filter((_, idx) => idx !== i));
-//   const removeRemark = (i) =>
-//     setFormField("customerRemarks")(
-//       form.customerRemarks.filter((_, idx) => idx !== i),
-//     );
-
-//   // ── Catalog select ────────────────────────────────────────────────
-//   const onSelectService = (item) => {
-//     setFormField("services")([
-//       ...form.services,
-//       {
-//         catalogId: item._id,
-//         name: item.name,
-//         price: item.mrp || 0,
-//         discount: 0,
-//         taxPercent: 0,
-//         lineTotal: item.mrp || 0,
-//       },
-//     ]);
-//   };
-
-//   const onSelectPart = (item) => {
-//     setFormField("parts")([
-//       ...form.parts,
-//       {
-//         inventoryId: item._id,
-//         partCode: item.no || null,
-//         name: item.name,
-//         quantity: 1,
-//         unitPrice: item.mrp || 0,
-//         discount: 0,
-//         taxPercent: item.taxPercent || 0,
-//         lineTotal: item.mrp || 0,
-//       },
-//     ]);
-//   };
-
-//   // ── Computed totals ───────────────────────────────────────────────
-//   const laborTotal = form.services.reduce(
-//     (sum, s) => sum + (s.lineTotal || 0),
-//     0,
-//   );
-//   const partsTotal = form.parts.reduce((sum, p) => sum + (p.lineTotal || 0), 0);
-//   const total = laborTotal + partsTotal;
-
-//   // ── Submit ────────────────────────────────────────────────────────
-//   const handleContinue = async () => {
-//     if (!vehicle?._id || !customer?._id) return;
-//     setSaving(true);
-//     try {
-//       await axiosClient.post(REPAIR_ORDER_ENDPOINTS.LIST, {
-//         customerId: customer._id,
-//         vehicleId: vehicle._id,
-//         vehicleVariant: form.vehicleVariant,
-//         odometerReading: form.odometerReading,
-//         services: form.services,
-//         applyDiscountToAllServices: form.applyDiscountToAllServices,
-//         parts: form.parts,
-//         applyDiscountToAllParts: form.applyDiscountToAllParts,
-//         images: form.images,
-//         laborTotal,
-//         partsTotal,
-//         totalAmount: total,
-//         tags: form.tags,
-//         customerRemarks: form.customerRemarks,
-//         estimatedDeliveryAt: form.estimatedDeliveryAt,
-//         notifyCustomer: form.notifyCustomer,
-//       });
-//       Alert.alert("Success", "Repair order created successfully.", [
-//         { text: "OK", onPress: () => navigation.goBack() },
-//       ]);
-//     } catch (e) {
-//       Alert.alert(
-//         "Error",
-//         e.displayMessage || "Could not create repair order.",
-//       );
-//     } finally {
-//       setSaving(false);
-//     }
-//   };
-
-//   const handleReset = () => {
-//     setPhase("search");
-//     setCustomer(null);
-//     setVehicle(null);
-//     setForm({
-//       vehicleVariant: "",
-//       odometerReading: null,
-//       services: [],
-//       applyDiscountToAllServices: false,
-//       parts: [],
-//       applyDiscountToAllParts: false,
-//       images: [],
-//       tags: [],
-//       customerRemarks: [],
-//       estimatedDeliveryAt: new Date(
-//         Date.now() + 6 * 60 * 60 * 1000,
-//       ).toISOString(),
-//       notifyCustomer: false,
-//     });
-//   };
-
-//   // ── Estimated delivery display ────────────────────────────────────
-//   const deliveryDisplay = form.estimatedDeliveryAt
-//     ? new Date(form.estimatedDeliveryAt).toLocaleString("en-IN", {
-//         day: "2-digit",
-//         month: "short",
-//         year: "numeric",
-//         hour: "2-digit",
-//         minute: "2-digit",
-//       })
-//     : "";
-
-//   return (
-//     <SafeAreaView style={styles.safe} edges={["bottom"]}>
-//       <TopNav
-//         title="Repair Order"
-//         transparent={false}
-//         rightElement={
-//           phase === "order" ? (
-//             <TouchableOpacity onPress={handleReset} style={styles.resetBtn}>
-//               <Text style={styles.resetText}>RESET</Text>
-//             </TouchableOpacity>
-//           ) : null
-//         }
-//       />
-
-//       {phase === "search" ? (
-//         <SearchPhase onFound={handleFound} />
-//       ) : (
-//         <ScrollView
-//           showsVerticalScrollIndicator={false}
-//           contentContainerStyle={styles.orderScroll}
-//           keyboardShouldPersistTaps="handled"
-//         >
-//           {/* Customer + Vehicle card */}
-//           <CustomerVehicleCard
-//             customer={customer}
-//             vehicle={vehicle}
-//             onChangeVehicle={handleReset}
-//             form={form}
-//             setFormField={setFormField}
-//           />
-
-//           {/* Package / AMC quick actions */}
-//           <View style={styles.quickRow}>
-//             <TouchableOpacity
-//               style={styles.quickChip}
-//               activeOpacity={0.8}
-//               onPress={() => Alert.alert("Packages", "Coming soon.")}
-//             >
-//               <Ionicons
-//                 name="bookmark-outline"
-//                 size={14}
-//                 color={COLORS.white}
-//               />
-//               <Text style={styles.quickChipText}>Choose From Packages</Text>
-//             </TouchableOpacity>
-//             <TouchableOpacity
-//               style={[styles.quickChip, styles.quickChipAlt]}
-//               activeOpacity={0.8}
-//               onPress={() => Alert.alert("AMC", "Coming soon.")}
-//             >
-//               <Ionicons name="attach-outline" size={14} color={COLORS.white} />
-//               <Text style={styles.quickChipText}>Attach AMC</Text>
-//             </TouchableOpacity>
-//           </View>
-
-//           {/* SERVICES section */}
-//           <SectionBlock
-//             label="SERVICES"
-//             onAdd={() => setShowServicePicker(true)}
-//           >
-//             {form.services.length === 0 ? (
-//               <View style={styles.emptyLines}>
-//                 <Text style={styles.emptyLinesText}>No services added yet</Text>
-//               </View>
-//             ) : (
-//               form.services.map((s, i) => (
-//                 <ServiceLineRow
-//                   key={i}
-//                   item={s}
-//                   index={i}
-//                   onRemove={removeService}
-//                   applyDiscount={form.applyDiscountToAllServices}
-//                 />
-//               ))
-//             )}
-//             <View style={styles.discountToggleRow}>
-//               <AppToggle
-//                 label="Apply discount to all"
-//                 value={form.applyDiscountToAllServices}
-//                 onChange={setFormField("applyDiscountToAllServices")}
-//               />
-//             </View>
-//           </SectionBlock>
-
-//           {/* PARTS section */}
-//           <SectionBlock label="PARTS" onAdd={() => setShowPartPicker(true)}>
-//             {form.parts.length === 0 ? (
-//               <View style={styles.emptyLines}>
-//                 <Text style={styles.emptyLinesText}>No parts added yet</Text>
-//               </View>
-//             ) : (
-//               form.parts.map((p, i) => (
-//                 <PartLineRow
-//                   key={i}
-//                   item={p}
-//                   index={i}
-//                   onRemove={removePart}
-//                   applyDiscount={form.applyDiscountToAllParts}
-//                 />
-//               ))
-//             )}
-//             <View style={styles.discountToggleRow}>
-//               <AppToggle
-//                 label="Apply discount to all"
-//                 value={form.applyDiscountToAllParts}
-//                 onChange={setFormField("applyDiscountToAllParts")}
-//               />
-//             </View>
-//           </SectionBlock>
-
-//           {/* IMAGES section */}
-//           <SectionBlock
-//             label="IMAGES"
-//             onAdd={() => Alert.alert("Images", "Image upload coming soon.")}
-//           >
-//             {form.images.length === 0 && (
-//               <View style={styles.emptyLines}>
-//                 <Text style={styles.emptyLinesText}>No images attached</Text>
-//               </View>
-//             )}
-//           </SectionBlock>
-
-//           {/* Totals block */}
-//           <View style={styles.totalsBlock}>
-//             <TotalRow
-//               label="Labor Total"
-//               value={laborTotal > 0 ? laborTotal : ""}
-//             />
-//             <View style={styles.totalsDivider} />
-//             <TotalRow
-//               label="Parts Total"
-//               value={partsTotal > 0 ? partsTotal : ""}
-//             />
-//             <View style={styles.totalsDivider} />
-//             <TotalRow label="TOTAL (Inclusive Taxes)" value={total} highlight />
-//             <View style={styles.totalsDivider} />
-//             <TotalRow label="Applicable discount" value={0} />
-//           </View>
-
-//           {/* TAGS section */}
-//           <SectionBlock
-//             label="TAGS"
-//             onAdd={() => Alert.alert("Tags", "Tag picker coming soon.")}
-//           >
-//             {form.tags.length === 0 && (
-//               <View style={styles.emptyLines}>
-//                 <Text style={styles.emptyLinesText}>No tags added</Text>
-//               </View>
-//             )}
-//           </SectionBlock>
-
-//           {/* CUSTOMER REMARKS section */}
-//           <SectionBlock
-//             label="CUSTOMER REMARKS"
-//             onAdd={() =>
-//               setFormField("customerRemarks")([...form.customerRemarks, ""])
-//             }
-//           >
-//             {form.customerRemarks.map((remark, i) => (
-//               <View key={i} style={styles.remarkRow}>
-//                 <TextInput
-//                   style={styles.remarkInput}
-//                   value={remark}
-//                   placeholder="Customer Remark"
-//                   placeholderTextColor={COLORS.textMuted}
-//                   onChangeText={(t) => {
-//                     const updated = [...form.customerRemarks];
-//                     updated[i] = t;
-//                     setFormField("customerRemarks")(updated);
-//                   }}
-//                 />
-//                 <TouchableOpacity
-//                   onPress={() => removeRemark(i)}
-//                   style={{ padding: 4 }}
-//                 >
-//                   <Ionicons name="close" size={18} color={COLORS.error} />
-//                 </TouchableOpacity>
-//               </View>
-//             ))}
-//           </SectionBlock>
-
-//           {/* Estimated delivery + notify */}
-//           <View style={styles.deliveryRow}>
-//             <Text style={styles.deliveryLabel}>Estimated delivery time</Text>
-//             <TouchableOpacity
-//               onPress={() =>
-//                 Alert.alert("Delivery time", "Date picker coming soon.")
-//               }
-//               activeOpacity={0.8}
-//             >
-//               <Text style={styles.deliveryValue}>{deliveryDisplay}</Text>
-//             </TouchableOpacity>
-//           </View>
-
-//           <View style={styles.notifyRow}>
-//             <AppToggle
-//               label="Notify Customer (SMS & e-mail)?"
-//               icon="notifications-outline"
-//               value={form.notifyCustomer}
-//               onChange={setFormField("notifyCustomer")}
-//             />
-//           </View>
-
-//           {/* Continue button */}
-//           <AppButton
-//             title={saving ? "Saving…" : "Continue"}
-//             variant="gradient"
-//             size="lg"
-//             onPress={handleContinue}
-//             disabled={saving}
-//             style={styles.continueBtn}
-//           />
-//         </ScrollView>
-//       )}
-
-//       {/* Catalog pickers */}
-//       <CatalogPickerModal
-//         visible={showServicePicker}
-//         itemType="service"
-//         onClose={() => setShowServicePicker(false)}
-//         onSelect={onSelectService}
-//       />
-//       <CatalogPickerModal
-//         visible={showPartPicker}
-//         itemType="part"
-//         onClose={() => setShowPartPicker(false)}
-//         onSelect={onSelectPart}
-//       />
-//     </SafeAreaView>
-//   );
-// }
-
-// // ─── Styles ───────────────────────────────────────────────────────────────────
-// const styles = StyleSheet.create({
-//   safe: { flex: 1, backgroundColor: COLORS.bg },
-
-//   resetBtn: { paddingHorizontal: SIZES.sm },
-//   resetText: {
-//     fontFamily: FONTS.semibold,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.textPrimary,
-//     letterSpacing: 0.3,
-//   },
-
-//   // Search phase
-//   searchPhase: {
-//     flex: 1,
-//     padding: SIZES.screenPadding,
-//     paddingTop: SIZES.lg,
-//     gap: SIZES.sm,
-//   },
-//   searchCard: {
-//     backgroundColor: COLORS.bgCard,
-//     borderRadius: SIZES.radiusLg,
-//     borderWidth: 1,
-//     borderColor: COLORS.borderLight,
-//     padding: SIZES.lg,
-//     alignItems: "center",
-//     gap: SIZES.sm,
-//     ...SHADOWS.sm,
-//   },
-//   searchTitle: {
-//     fontFamily: FONTS.bold,
-//     fontSize: SIZES.textMd,
-//     color: COLORS.textPrimary,
-//     textAlign: "center",
-//   },
-//   searchSubtitle: {
-//     fontFamily: FONTS.regular,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.textMuted,
-//     textAlign: "center",
-//     marginBottom: SIZES.sm,
-//   },
-//   orText: {
-//     textAlign: "center",
-//     fontFamily: FONTS.regular,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.textMuted,
-//   },
-
-//   // Order scroll
-//   orderScroll: { paddingBottom: 60 },
-
-//   // Customer + Vehicle card
-//   cvCard: {
-//     flexDirection: "row",
-//     backgroundColor: COLORS.bgCard,
-//     margin: SIZES.screenPadding,
-//     marginBottom: SIZES.sm,
-//     borderRadius: SIZES.radiusLg,
-//     borderWidth: 1,
-//     borderColor: COLORS.borderLight,
-//     overflow: "hidden",
-//     ...SHADOWS.sm,
-//   },
-//   cvLeft: { flex: 1, padding: SIZES.md, justifyContent: "center" },
-//   cvDivider: { width: 1, backgroundColor: COLORS.borderLight },
-//   cvRight: { flex: 1.4, padding: SIZES.md },
-//   cvName: {
-//     fontFamily: FONTS.semibold,
-//     fontSize: SIZES.textBase,
-//     color: COLORS.textPrimary,
-//   },
-//   cvPhone: {
-//     fontFamily: FONTS.regular,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.textMuted,
-//     marginTop: 2,
-//   },
-//   cvVehicleRow: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     gap: 4,
-//     marginBottom: 2,
-//   },
-//   cvVehicle: {
-//     fontFamily: FONTS.semibold,
-//     fontSize: SIZES.textBase,
-//     color: COLORS.textPrimary,
-//     flex: 1,
-//   },
-//   inlineRow: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     gap: 3,
-//     paddingVertical: 1,
-//   },
-//   inlineValue: {
-//     fontFamily: FONTS.regular,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.textPrimary,
-//   },
-//   inlinePlaceholder: { color: COLORS.textMuted },
-//   inlineInput: {
-//     fontFamily: FONTS.regular,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.textPrimary,
-//     borderBottomWidth: 1,
-//     borderBottomColor: COLORS.primary,
-//     paddingVertical: 2,
-//     minWidth: 60,
-//   },
-//   odometerLabel: {
-//     fontFamily: FONTS.regular,
-//     fontSize: SIZES.textXs,
-//     color: COLORS.textMuted,
-//   },
-
-//   // Quick action chips
-//   quickRow: {
-//     flexDirection: "row",
-//     gap: SIZES.sm,
-//     paddingHorizontal: SIZES.screenPadding,
-//     marginBottom: SIZES.sm,
-//   },
-//   quickChip: {
-//     flex: 1,
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "center",
-//     gap: 5,
-//     backgroundColor: COLORS.textPrimary,
-//     borderRadius: SIZES.radiusFull,
-//     paddingVertical: SIZES.sm + 2,
-//   },
-//   quickChipAlt: { backgroundColor: COLORS.textPrimary },
-//   quickChipText: {
-//     fontFamily: FONTS.semibold,
-//     fontSize: SIZES.textXs,
-//     color: COLORS.white,
-//   },
-
-//   // Section block
-//   sectionBlock: {
-//     marginHorizontal: SIZES.screenPadding,
-//     marginBottom: SIZES.sm,
-//     borderRadius: SIZES.radiusMd,
-//     borderWidth: 1,
-//     borderColor: COLORS.borderLight,
-//     backgroundColor: COLORS.bgCard,
-//     overflow: "hidden",
-//     ...SHADOWS.sm,
-//   },
-//   sectionHeader: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "space-between",
-//     backgroundColor: COLORS.primaryLight,
-//     paddingHorizontal: SIZES.md,
-//     paddingVertical: SIZES.sm + 2,
-//   },
-//   sectionLabel: {
-//     fontFamily: FONTS.bold,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.textPrimary,
-//     letterSpacing: 0.5,
-//   },
-//   addChip: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     gap: 4,
-//     backgroundColor: COLORS.primary,
-//     borderRadius: SIZES.radiusFull,
-//     paddingHorizontal: SIZES.sm + 2,
-//     paddingVertical: 4,
-//   },
-//   addChipText: {
-//     fontFamily: FONTS.semibold,
-//     fontSize: SIZES.textXs,
-//     color: COLORS.white,
-//   },
-
-//   // Line rows
-//   emptyLines: { padding: SIZES.md, alignItems: "center" },
-//   emptyLinesText: {
-//     fontFamily: FONTS.regular,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.textMuted,
-//   },
-//   lineRow: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     paddingHorizontal: SIZES.md,
-//     paddingVertical: SIZES.sm,
-//     borderBottomWidth: 1,
-//     borderBottomColor: COLORS.borderLight,
-//   },
-//   lineName: {
-//     fontFamily: FONTS.medium,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.textPrimary,
-//   },
-//   lineSub: {
-//     fontFamily: FONTS.regular,
-//     fontSize: SIZES.textXs,
-//     color: COLORS.textMuted,
-//   },
-//   lineDisc: {
-//     fontFamily: FONTS.regular,
-//     fontSize: SIZES.textXs,
-//     color: COLORS.warning,
-//   },
-//   linePrice: {
-//     width: 60,
-//     fontFamily: FONTS.semibold,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.textPrimary,
-//     textAlign: "right",
-//   },
-//   lineRemove: { width: 28, alignItems: "center" },
-//   discountToggleRow: {
-//     paddingHorizontal: SIZES.sm,
-//     paddingVertical: SIZES.sm,
-//     borderTopWidth: 1,
-//     borderTopColor: COLORS.borderLight,
-//   },
-
-//   // Totals
-//   totalsBlock: {
-//     marginHorizontal: SIZES.screenPadding,
-//     marginBottom: SIZES.sm,
-//     backgroundColor: COLORS.bgCard,
-//     borderRadius: SIZES.radiusMd,
-//     borderWidth: 1,
-//     borderColor: COLORS.borderLight,
-//     overflow: "hidden",
-//     ...SHADOWS.sm,
-//   },
-//   totalRow: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "space-between",
-//     paddingHorizontal: SIZES.md,
-//     paddingVertical: SIZES.sm + 2,
-//   },
-//   totalRowHL: { backgroundColor: COLORS.bgSection },
-//   totalLabel: {
-//     fontFamily: FONTS.regular,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.textSecondary,
-//   },
-//   totalLabelHL: { fontFamily: FONTS.semibold, color: COLORS.textPrimary },
-//   totalValueBox: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     backgroundColor: COLORS.bgInput,
-//     borderRadius: SIZES.radiusSm,
-//     paddingHorizontal: SIZES.sm,
-//     paddingVertical: SIZES.xs,
-//     minWidth: 100,
-//     justifyContent: "flex-end",
-//   },
-//   totalValueBoxHL: { backgroundColor: COLORS.bgInput },
-//   totalRupee: {
-//     fontFamily: FONTS.semibold,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.textMuted,
-//     marginRight: 2,
-//   },
-//   totalValue: {
-//     fontFamily: FONTS.semibold,
-//     fontSize: SIZES.textBase,
-//     color: COLORS.textPrimary,
-//   },
-//   totalValueHL: { color: COLORS.primary },
-//   totalsDivider: { height: 1, backgroundColor: COLORS.borderLight },
-
-//   // Remarks
-//   remarkRow: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     paddingHorizontal: SIZES.md,
-//     paddingVertical: SIZES.sm,
-//     borderBottomWidth: 1,
-//     borderBottomColor: COLORS.borderLight,
-//   },
-//   remarkInput: {
-//     flex: 1,
-//     fontFamily: FONTS.regular,
-//     fontSize: SIZES.textBase,
-//     color: COLORS.textPrimary,
-//   },
-
-//   // Delivery + notify
-//   deliveryRow: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "space-between",
-//     marginHorizontal: SIZES.screenPadding,
-//     marginBottom: SIZES.sm,
-//     paddingBottom: SIZES.sm,
-//     borderBottomWidth: 1,
-//     borderBottomColor: COLORS.borderLight,
-//   },
-//   deliveryLabel: {
-//     fontFamily: FONTS.regular,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.textMuted,
-//   },
-//   deliveryValue: {
-//     fontFamily: FONTS.semibold,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.textPrimary,
-//   },
-//   notifyRow: { paddingHorizontal: SIZES.screenPadding, marginBottom: SIZES.md },
-
-//   // Continue
-//   continueBtn: {
-//     marginHorizontal: SIZES.screenPadding,
-//     marginBottom: SIZES.xl,
-//   },
-
-//   // Catalog picker modal
-//   pickerHeader: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "space-between",
-//     paddingHorizontal: SIZES.screenPadding,
-//     paddingVertical: SIZES.md,
-//   },
-//   pickerTitle: {
-//     fontFamily: FONTS.semibold,
-//     fontSize: SIZES.textLg,
-//     color: COLORS.textPrimary,
-//   },
-//   pickerClose: {
-//     width: 34,
-//     height: 34,
-//     borderRadius: SIZES.radiusFull,
-//     backgroundColor: COLORS.bgSection,
-//     alignItems: "center",
-//     justifyContent: "center",
-//   },
-//   pickerSearch: {
-//     paddingHorizontal: SIZES.screenPadding,
-//     borderBottomWidth: 1,
-//     borderBottomColor: COLORS.borderLight,
-//     paddingBottom: SIZES.sm,
-//   },
-//   pickerItem: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     gap: SIZES.sm,
-//     backgroundColor: COLORS.bgCard,
-//     borderRadius: SIZES.radiusMd,
-//     padding: SIZES.md,
-//     borderWidth: 1,
-//     borderColor: COLORS.borderLight,
-//   },
-//   pickerItemName: {
-//     fontFamily: FONTS.medium,
-//     fontSize: SIZES.textBase,
-//     color: COLORS.textPrimary,
-//   },
-//   pickerItemSub: {
-//     fontFamily: FONTS.regular,
-//     fontSize: SIZES.textXs,
-//     color: COLORS.textMuted,
-//   },
-//   pickerItemPrice: {
-//     fontFamily: FONTS.semibold,
-//     fontSize: SIZES.textSm,
-//     color: COLORS.primary,
-//     marginRight: 4,
-//   },
-//   pickerEmpty: {
-//     textAlign: "center",
-//     fontFamily: FONTS.regular,
-//     fontSize: SIZES.textBase,
-//     color: COLORS.textMuted,
-//     marginTop: 40,
-//   },
-// });
-
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
@@ -1183,6 +21,7 @@ import TopNav from "../../components/ui/TopNav";
 import AppInput from "../../components/ui/AppInput";
 import AppButton from "../../components/ui/AppButton";
 import AppToggle from "../../components/ui/AppToggle";
+import ManualLineItemModal from "../../components/forms/ManualLineItemModal";
 import axiosClient from "../../api/axios";
 import { linkRepairOrder } from "../../api/booking";
 import {
@@ -1199,7 +38,28 @@ const calcLineTotal = (price, qty, disc, tax) => {
   const taxAmt = afterDisc * ((parseFloat(tax) || 0) / 100);
   return +(afterDisc + taxAmt).toFixed(2);
 };
+const normalizeServiceForApi = (service) => ({
+  entryMode: service.entryMode || (service.catalogId ? "catalog" : "manual"),
+  catalogId: service.catalogId ?? service.serviceId ?? null,
+  name: String(service.name ?? service.serviceName ?? "").trim() || "Service",
+  price: Number(service.price ?? service.mrp ?? service.lineTotal ?? 0) || 0,
+  discount: Number(service.discount ?? 0) || 0,
+  taxPercent: Number(service.taxPercent ?? 0) || 0,
+});
 
+const normalizePartForApi = (part) => ({
+  entryMode: part.entryMode || (part.inventoryId ? "catalog" : "manual"),
+  inventoryId: part.inventoryId ?? part.itemId ?? null,
+  partCode: part.partCode ?? part.code ?? part.no ?? null,
+  name: String(part.name ?? part.partName ?? "").trim() || "Part",
+  quantity: Number(part.quantity ?? part.qty ?? 1) || 1,
+  unitPrice:
+    Number(
+      part.unitPrice ?? part.price ?? part.mrp ?? part.sellingPrice ?? 0,
+    ) || 0,
+  discount: Number(part.discount ?? 0) || 0,
+  taxPercent: Number(part.taxPercent ?? 0) || 0,
+});
 // ─── Search Phase ─────────────────────────────────────────────────────────────
 function SearchPhase({ onFound, onNavigate, onNewCustomer }) {
   const [query, setQuery] = useState("");
@@ -1487,19 +347,46 @@ function CustomerVehicleCard({
 }
 
 // ─── Section block (services / parts / images / tags etc.) ────────────────────
-function SectionBlock({ label, onAdd, children }) {
+function SectionBlock({
+  label,
+  onAdd,
+  primaryActionLabel,
+  secondaryActionLabel,
+  onSecondaryAction,
+  children,
+}) {
   return (
     <View style={styles.sectionBlock}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionLabel}>{label}</Text>
-        <TouchableOpacity
-          style={styles.addChip}
-          onPress={onAdd}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add-circle" size={15} color={COLORS.white} />
-          <Text style={styles.addChipText}>Add</Text>
-        </TouchableOpacity>
+        <View style={styles.sectionActions}>
+          {onSecondaryAction ? (
+            <TouchableOpacity
+              style={styles.secondaryChip}
+              onPress={onSecondaryAction}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="create-outline"
+                size={14}
+                color={COLORS.primary}
+              />
+              <Text style={styles.secondaryChipText}>
+                {secondaryActionLabel || "Manual"}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity
+            style={styles.addChip}
+            onPress={onAdd}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add-circle" size={15} color={COLORS.white} />
+            <Text style={styles.addChipText}>
+              {primaryActionLabel || "Add"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
       {children}
     </View>
@@ -1826,11 +713,18 @@ const DT_MONTH_SHORT = [
   "Nov",
   "Dec",
 ];
-const DT_DAYS = Array.from({ length: 30 }, (_, i) => {
-  const d = new Date();
-  d.setDate(d.getDate() + i);
-  return d;
-});
+const DT_DAYS_PAST = 90;
+const DT_DAYS_FUTURE = 30;
+const DT_DAYS = Array.from(
+  { length: DT_DAYS_PAST + DT_DAYS_FUTURE },
+  (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i - DT_DAYS_PAST);
+    return d;
+  },
+);
+const DT_TODAY_IDX = DT_DAYS_PAST;
+const DT_DAY_CHIP_STRIDE = 72;
 const DT_TIME_SLOTS = (() => {
   const slots = [];
   for (let min = 8 * 60; min <= 21 * 60; min += 30) {
@@ -1863,20 +757,27 @@ function DeliveryDatePickerModal({ visible, current, onClose, onConfirm }) {
       (s) => s.hours === d.getHours() && s.minutes === d.getMinutes(),
     );
     return {
-      dayIdx: dayIdx >= 0 ? dayIdx : 0,
+      dayIdx: dayIdx >= 0 ? dayIdx : DT_TODAY_IDX,
       timeIdx: timeIdx >= 0 ? timeIdx : 0,
     };
   };
 
   const [dayIdx, setDayIdx] = useState(() => init().dayIdx);
   const [timeIdx, setTimeIdx] = useState(() => init().timeIdx);
+  const dayScrollRef = useRef(null);
 
-  // Re-sync when modal opens with a new `current`
+  // Re-sync when modal opens with a new `current` and scroll to selected day
   useEffect(() => {
     if (visible) {
       const { dayIdx: d, timeIdx: t } = init();
       setDayIdx(d);
       setTimeIdx(t);
+      requestAnimationFrame(() => {
+        dayScrollRef.current?.scrollTo({
+          x: Math.max(0, d * DT_DAY_CHIP_STRIDE - 80),
+          animated: false,
+        });
+      });
     }
   }, [visible]);
 
@@ -1891,8 +792,12 @@ function DeliveryDatePickerModal({ visible, current, onClose, onConfirm }) {
     onConfirm(d.toISOString());
   };
 
-  const dayLabel = (d, idx) =>
-    idx === 0 ? "Today" : idx === 1 ? "Tomorrow" : DT_DAY_NAMES[d.getDay()];
+  const dayLabel = (d, idx) => {
+    if (idx === DT_TODAY_IDX) return "Today";
+    if (idx === DT_TODAY_IDX + 1) return "Tomorrow";
+    if (idx === DT_TODAY_IDX - 1) return "Yesterday";
+    return DT_DAY_NAMES[d.getDay()];
+  };
 
   return (
     <Modal
@@ -1918,6 +823,7 @@ function DeliveryDatePickerModal({ visible, current, onClose, onConfirm }) {
             {/* Day chips */}
             <Text style={dtStyles.sectionLabel}>Date</Text>
             <ScrollView
+              ref={dayScrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
               style={{ marginBottom: 4 }}
@@ -2152,6 +1058,8 @@ export default function CustomerRepairOrderScreen() {
   // Pickers
   const [showServicePicker, setShowServicePicker] = useState(false);
   const [showPartPicker, setShowPartPicker] = useState(false);
+  const [showManualServiceModal, setShowManualServiceModal] = useState(false);
+  const [showManualPartModal, setShowManualPartModal] = useState(false);
   const [showTagPicker, setShowTagPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showScheduledPicker, setShowScheduledPicker] = useState(false);
@@ -2168,71 +1076,134 @@ export default function CustomerRepairOrderScreen() {
 
   // ── Remove helpers ────────────────────────────────────────────────
   const removeService = (i) =>
-    setFormField("services")(form.services.filter((_, idx) => idx !== i));
+    setForm((prev) => ({
+      ...prev,
+      services: prev.services.filter((_, idx) => idx !== i),
+    }));
   const removePart = (i) =>
-    setFormField("parts")(form.parts.filter((_, idx) => idx !== i));
+    setForm((prev) => ({
+      ...prev,
+      parts: prev.parts.filter((_, idx) => idx !== i),
+    }));
   const removeRemark = (i) =>
     setFormField("customerRemarks")(
       form.customerRemarks.filter((_, idx) => idx !== i),
     );
 
   // ── Catalog select ────────────────────────────────────────────────
+  // const onSelectService = (item) => {
+  //   setForm((prev) => ({
+  //     ...prev,
+  //     services: [
+  //       ...prev.services,
+  //       {
+  //         catalogId: item._id,
+  //         name: item.name,
+  //         price: item.mrp || 0,
+  //         discount: 0,
+  //         taxPercent: 0,
+  //         lineTotal: calcLineTotal(item.mrp || 0, 1, 0, 0),
+  //       },
+  //     ],
+  //   }));
+  // };
+
+  // const onSelectPart = (item) => {
+  //   setForm((prev) => ({
+  //     ...prev,
+  //     parts: [
+  //       ...prev.parts,
+  //       {
+  //         inventoryId: item._id,
+  //         partCode: item.no || null,
+  //         name: item.name,
+  //         quantity: 1,
+  //         unitPrice: item.mrp || 0,
+  //         discount: 0,
+  //         taxPercent: item.taxPercent || 0,
+  //         lineTotal: calcLineTotal(item.mrp || 0, 1, 0, item.taxPercent || 0),
+  //       },
+  //     ],
+  //   }));
+  // };
+
   const onSelectService = (item) => {
-    setFormField("services")([
-      ...form.services,
-      {
-        catalogId: item._id,
-        name: item.name,
-        price: item.mrp || 0,
-        discount: 0,
-        taxPercent: 0,
-        lineTotal: item.mrp || 0,
-      },
-    ]);
+    setForm((prev) => ({
+      ...prev,
+      services: [
+        ...prev.services,
+        {
+          entryMode: "catalog",
+          catalogId: item._id,
+          name: item.name,
+          price: item.mrp || 0,
+          discount: 0,
+          taxPercent: 0,
+          lineTotal: calcLineTotal(item.mrp || 0, 1, 0, 0),
+        },
+      ],
+    }));
   };
 
   const onSelectPart = (item) => {
-    setFormField("parts")([
-      ...form.parts,
-      {
-        inventoryId: item._id,
-        partCode: item.no || null,
-        name: item.name,
-        quantity: 1,
-        unitPrice: item.mrp || 0,
-        discount: 0,
-        taxPercent: item.taxPercent || 0,
-        lineTotal: item.mrp || 0,
-      },
-    ]);
+    setForm((prev) => ({
+      ...prev,
+      parts: [
+        ...prev.parts,
+        {
+          entryMode: "catalog",
+          inventoryId: item._id,
+          partCode: item.no || null,
+          name: item.name,
+          quantity: 1,
+          unitPrice: item.mrp || 0,
+          discount: 0,
+          taxPercent: item.taxPercent || 0,
+          lineTotal: calcLineTotal(item.mrp || 0, 1, 0, item.taxPercent || 0),
+        },
+      ],
+    }));
+  };
+  const addManualService = (item) => {
+    setForm((prev) => ({
+      ...prev,
+      services: [...prev.services, item],
+    }));
+  };
+
+  const addManualPart = (item) => {
+    setForm((prev) => ({
+      ...prev,
+      parts: [...prev.parts, item],
+    }));
   };
 
   // ── Computed totals ───────────────────────────────────────────────
-  const laborTotal = form.services.reduce(
+  const servicesTotal = form.services.reduce(
     (sum, s) => sum + (s.lineTotal || 0),
     0,
   );
   const partsTotal = form.parts.reduce((sum, p) => sum + (p.lineTotal || 0), 0);
-  const total = laborTotal + partsTotal;
+  const total = servicesTotal + partsTotal;
 
   // ── Submit ────────────────────────────────────────────────────────
   const handleContinue = async () => {
     if (!vehicle?._id || !customer?._id) return;
     setSaving(true);
     try {
+      const servicesPayload = (form.services || []).map(normalizeServiceForApi);
+      const partsPayload = (form.parts || []).map(normalizePartForApi);
+
       const roRes = await axiosClient.post(REPAIR_ORDER_ENDPOINTS.LIST, {
         customerId: customer._id,
         vehicleId: vehicle._id,
         vehicleVariant: form.vehicleVariant,
         odometerReading: form.odometerReading,
-        services: form.services,
+        services: servicesPayload,
         applyDiscountToAllServices: form.applyDiscountToAllServices,
-        parts: form.parts,
+        parts: partsPayload,
         applyDiscountToAllParts: form.applyDiscountToAllParts,
         images: form.images,
-        laborTotal,
-        partsTotal,
-        totalAmount: total,
         tags: form.tags,
         customerRemarks: form.customerRemarks,
         scheduledAt: form.scheduledAt || null,
@@ -2387,6 +1358,9 @@ export default function CustomerRepairOrderScreen() {
           <SectionBlock
             label="SERVICES"
             onAdd={() => setShowServicePicker(true)}
+            primaryActionLabel="Catalog"
+            secondaryActionLabel="Manual"
+            onSecondaryAction={() => setShowManualServiceModal(true)}
           >
             {form.services.length === 0 ? (
               <View style={styles.emptyLines}>
@@ -2413,7 +1387,13 @@ export default function CustomerRepairOrderScreen() {
           </SectionBlock>
 
           {/* PARTS section */}
-          <SectionBlock label="PARTS" onAdd={() => setShowPartPicker(true)}>
+          <SectionBlock
+            label="PARTS"
+            onAdd={() => setShowPartPicker(true)}
+            primaryActionLabel="Catalog"
+            secondaryActionLabel="Manual"
+            onSecondaryAction={() => setShowManualPartModal(true)}
+          >
             {form.parts.length === 0 ? (
               <View style={styles.emptyLines}>
                 <Text style={styles.emptyLinesText}>No parts added yet</Text>
@@ -2453,8 +1433,8 @@ export default function CustomerRepairOrderScreen() {
           {/* Totals block */}
           <View style={styles.totalsBlock}>
             <TotalRow
-              label="Labor Total"
-              value={laborTotal > 0 ? laborTotal : ""}
+              label="Services Total"
+              value={servicesTotal > 0 ? servicesTotal : ""}
             />
             <View style={styles.totalsDivider} />
             <TotalRow
@@ -2645,6 +1625,22 @@ export default function CustomerRepairOrderScreen() {
         itemType="part"
         onClose={() => setShowPartPicker(false)}
         onSelect={onSelectPart}
+      />
+      <ManualLineItemModal
+        visible={showManualServiceModal}
+        itemType="service"
+        title="Add Manual Service"
+        lineTotalMode="inclusiveTax"
+        onClose={() => setShowManualServiceModal(false)}
+        onSubmit={addManualService}
+      />
+      <ManualLineItemModal
+        visible={showManualPartModal}
+        itemType="part"
+        title="Add Manual Part"
+        lineTotalMode="inclusiveTax"
+        onClose={() => setShowManualPartModal(false)}
+        onSubmit={addManualPart}
       />
       <TagPickerModal
         visible={showTagPicker}
@@ -2957,11 +1953,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: SIZES.md,
     paddingVertical: SIZES.sm + 2,
   },
+  sectionActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   sectionLabel: {
     fontFamily: FONTS.bold,
     fontSize: SIZES.textSm,
     color: COLORS.textPrimary,
     letterSpacing: 0.5,
+  },
+  secondaryChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusFull,
+    paddingHorizontal: SIZES.sm + 2,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: COLORS.primary + "30",
+  },
+  secondaryChipText: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textXs,
+    color: COLORS.primary,
   },
   addChip: {
     flexDirection: "row",

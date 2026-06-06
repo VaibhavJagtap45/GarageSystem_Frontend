@@ -25,6 +25,7 @@ import Avatar from "../../components/ui/Avatar";
 import { SkeletonListItem } from "../../components/ui/SkeletonLoader";
 import { getMembers, getVendors, addUser } from "../../api/user";
 import useAuth from "../../hooks/useAuth";
+import ContactPickerModal from "../../components/ui/ContactPickerModal";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS = [
@@ -151,6 +152,23 @@ function AddUserModal({ visible, defaultRole, onClose, onSuccess }) {
   const [form, setForm] = useState(FORM_INIT);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
+
+  const handleContactSelected = (contact, phone) => {
+    if (contact.name) {
+      const parts = contact.name.trim().split(/\s+/);
+      setForm((p) => ({
+        ...p,
+        firstName: parts[0] || "",
+        lastName:  parts.slice(1).join(" "),
+      }));
+      setErrors((p) => ({ ...p, firstName: null }));
+    }
+    if (phone) {
+      setForm((p) => ({ ...p, phone }));
+      setErrors((p) => ({ ...p, phone: null }));
+    }
+  };
 
   // Role select options — both tabs can switch role inside modal
   const ROLE_OPTIONS = [
@@ -234,7 +252,17 @@ function AddUserModal({ visible, defaultRole, onClose, onSuccess }) {
         >
           {/* Basic info */}
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Basic Info</Text>
+            <View style={styles.sectionTitleRow}>
+              <Text style={styles.sectionTitle}>Basic Info</Text>
+              <TouchableOpacity
+                style={styles.importBtn}
+                onPress={() => setShowContacts(true)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="people-outline" size={13} color={COLORS.primary} />
+                <Text style={styles.importBtnText}>Import</Text>
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.rowFields}>
               <View style={styles.rowField}>
@@ -309,6 +337,13 @@ function AddUserModal({ visible, defaultRole, onClose, onSuccess }) {
             disabled={saving}
           />
         </ScrollView>
+
+        <ContactPickerModal
+          visible={showContacts}
+          onClose={() => setShowContacts(false)}
+          onSelect={handleContactSelected}
+          title={`Pick ${roleLabel} Contact`}
+        />
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -772,10 +807,26 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semibold,
     fontSize: SIZES.textBase,
     color: COLORS.textPrimary,
+  },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: SIZES.sm,
     paddingBottom: SIZES.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
+  },
+  importBtn: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    borderWidth: 1, borderColor: COLORS.primary,
+    borderRadius: SIZES.radiusFull,
+    paddingHorizontal: SIZES.sm + 2, paddingVertical: 4,
+    backgroundColor: COLORS.primaryLight,
+  },
+  importBtnText: {
+    fontFamily: FONTS.semibold, fontSize: SIZES.textXs,
+    color: COLORS.primary, letterSpacing: 0.2,
   },
   rowFields: { flexDirection: "row", gap: SIZES.sm },
   rowField: { flex: 1 },

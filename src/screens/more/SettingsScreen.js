@@ -70,15 +70,6 @@ const GARAGE_SETTINGS = [
     accentSoft: "#FFFBEB",
     onPress: (nav) => nav.navigate("JobCardChecklist"),
   },
-  {
-    id: "google_calendar",
-    title: "Google Calendar",
-    subtitle: "Sync bookings and schedule",
-    icon: "calendar-sync-outline",
-    accent: COLORS.error,
-    accentSoft: COLORS.errorLight,
-    onPress: (nav) => nav.navigate("GoogleCalendarSettings"),
-  },
 ];
 
 const PREFERENCES = [

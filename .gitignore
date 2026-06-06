@@ -32,7 +32,13 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+
+# build bundles — must not be checked in
+*.zip
+*.tar
+*.tar.gz
 
 # typescript
 *.tsbuildinfo

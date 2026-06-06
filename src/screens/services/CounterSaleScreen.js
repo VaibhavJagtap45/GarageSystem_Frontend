@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
@@ -9,6 +15,9 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  Animated,
+  TextInput,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,12 +36,9 @@ import {
 import TopNav from "../../components/ui/TopNav";
 import AppInput from "../../components/ui/AppInput";
 import AppButton from "../../components/ui/AppButton";
-import AppToggle from "../../components/ui/AppToggle";
-import Badge from "../../components/ui/Badge";
 import Avatar from "../../components/ui/Avatar";
+import ManualLineItemModal from "../../components/forms/ManualLineItemModal";
 import axiosClient from "../../api/axios";
-
-const LABOUR_PERCENT = 20;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const rupee = (n) => `₹${parseFloat(n || 0).toFixed(2)}`;
@@ -40,35 +46,91 @@ const rupee = (n) => `₹${parseFloat(n || 0).toFixed(2)}`;
 function computeTotals(services, parts, discountAmount = 0) {
   const servicesSubTotal = services.reduce((s, l) => s + (l.lineTotal ?? 0), 0);
   const partsSubTotal = parts.reduce((s, l) => s + (l.lineTotal ?? 0), 0);
-  const labourCharge = parseFloat(
-    (servicesSubTotal * (LABOUR_PERCENT / 100)).toFixed(2),
+  const taxAmount = parseFloat(
+    (
+      [...services, ...parts].reduce(
+        (sum, line) =>
+          sum + (Number(line.lineTotal) || 0) * ((Number(line.taxPercent) || 0) / 100),
+        0,
+      )
+    ).toFixed(2),
   );
   const totalAmount = parseFloat(
-    (servicesSubTotal + partsSubTotal + labourCharge - discountAmount).toFixed(
-      2,
-    ),
+    (servicesSubTotal + partsSubTotal + taxAmount - discountAmount).toFixed(2),
   );
-  return { servicesSubTotal, partsSubTotal, labourCharge, totalAmount };
+  return { servicesSubTotal, partsSubTotal, taxAmount, totalAmount };
 }
 
 // ─── Section block ────────────────────────────────────────────────────────────
-function SectionBlock({ label, onAdd, children, isEmpty }) {
+function SectionBlock({
+  label,
+  icon,
+  count = 0,
+  subtotal,
+  onAdd,
+  addLabel = "Add",
+  secondaryActionLabel,
+  onSecondaryAction,
+  emptyHint,
+  emptyIcon,
+  children,
+  isEmpty,
+}) {
   return (
     <View style={styles.sectionBlock}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionLabel}>{label}</Text>
-        <TouchableOpacity
-          style={styles.addChip}
-          onPress={onAdd}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add-circle" size={15} color={COLORS.white} />
-          <Text style={styles.addChipText}>Add</Text>
-        </TouchableOpacity>
+        <View style={styles.sectionHeaderLeft}>
+          {icon ? (
+            <View style={styles.sectionIcon}>
+              <Ionicons name={icon} size={13} color={COLORS.primary} />
+            </View>
+          ) : null}
+          <Text style={styles.sectionLabel}>{label}</Text>
+          {count > 0 && (
+            <View style={styles.sectionCountPill}>
+              <Text style={styles.sectionCountText}>{count}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.sectionHeaderRight}>
+          {typeof subtotal === "number" && subtotal > 0 ? (
+            <Text style={styles.sectionSubtotal}>{rupee(subtotal)}</Text>
+          ) : null}
+          {onSecondaryAction ? (
+            <TouchableOpacity
+              style={styles.secondaryChip}
+              onPress={onSecondaryAction}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="create-outline" size={13} color={COLORS.primary} />
+              <Text style={styles.secondaryChipText}>
+                {secondaryActionLabel || "Manual"}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity
+            style={styles.addChip}
+            onPress={onAdd}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={14} color={COLORS.white} />
+            <Text style={styles.addChipText}>{addLabel}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       {isEmpty ? (
         <View style={styles.sectionEmpty}>
+          <View style={styles.sectionEmptyIcon}>
+            <Ionicons
+              name={emptyIcon || "cube-outline"}
+              size={20}
+              color={COLORS.textMuted}
+            />
+          </View>
           <Text style={styles.sectionEmptyText}>None added yet</Text>
+          {emptyHint ? (
+            <Text style={styles.sectionEmptyHint}>{emptyHint}</Text>
+          ) : null}
         </View>
       ) : (
         children
@@ -81,12 +143,17 @@ function SectionBlock({ label, onAdd, children, isEmpty }) {
 function ServiceLineRow({ item, onRemove }) {
   return (
     <View style={styles.lineRow}>
+      <View style={styles.lineLeftIcon}>
+        <Ionicons name="construct-outline" size={15} color={COLORS.primary} />
+      </View>
       <View style={styles.lineInfo}>
         <Text style={styles.lineName} numberOfLines={1}>
           {item.name}
         </Text>
         {item.category ? (
-          <Text style={styles.lineSub}>{item.category}</Text>
+          <Text style={styles.lineSub} numberOfLines={1}>
+            {item.category}
+          </Text>
         ) : null}
       </View>
       <Text style={styles.linePrice}>{rupee(item.price)}</Text>
@@ -94,8 +161,9 @@ function ServiceLineRow({ item, onRemove }) {
         onPress={onRemove}
         style={styles.lineRemove}
         activeOpacity={0.7}
+        hitSlop={10}
       >
-        <Ionicons name="close-circle" size={18} color={COLORS.error} />
+        <Ionicons name="close" size={14} color={COLORS.error} />
       </TouchableOpacity>
     </View>
   );
@@ -105,12 +173,18 @@ function ServiceLineRow({ item, onRemove }) {
 function PartLineRow({ item, onRemove, onQtyChange }) {
   return (
     <View style={styles.lineRow}>
+      <View
+        style={[styles.lineLeftIcon, { backgroundColor: COLORS.bgSection }]}
+      >
+        <Ionicons name="cube-outline" size={15} color={COLORS.textSecondary} />
+      </View>
       <View style={styles.lineInfo}>
         <Text style={styles.lineName} numberOfLines={1}>
           {item.name}
         </Text>
-        <Text style={styles.lineSub}>
-          ₹{item.unitPrice} × {item.quantity}
+        <Text style={styles.lineSub} numberOfLines={1}>
+          {item.partCode ? `${item.partCode}  ·  ` : ""}
+          {rupee(item.unitPrice)} × {item.quantity}
         </Text>
       </View>
       {/* Qty stepper */}
@@ -119,8 +193,13 @@ function PartLineRow({ item, onRemove, onQtyChange }) {
           style={styles.qtyBtn}
           onPress={() => onQtyChange(Math.max(1, item.quantity - 1))}
           activeOpacity={0.7}
+          disabled={item.quantity <= 1}
         >
-          <Ionicons name="remove" size={12} color={COLORS.primary} />
+          <Ionicons
+            name="remove"
+            size={12}
+            color={item.quantity <= 1 ? COLORS.textMuted : COLORS.primary}
+          />
         </TouchableOpacity>
         <Text style={styles.qtyVal}>{item.quantity}</Text>
         <TouchableOpacity
@@ -136,8 +215,9 @@ function PartLineRow({ item, onRemove, onQtyChange }) {
         onPress={onRemove}
         style={styles.lineRemove}
         activeOpacity={0.7}
+        hitSlop={10}
       >
-        <Ionicons name="close-circle" size={18} color={COLORS.error} />
+        <Ionicons name="close" size={14} color={COLORS.error} />
       </TouchableOpacity>
     </View>
   );
@@ -451,15 +531,25 @@ function CustomerSearchBar({ selected, onSelect, onClear }) {
   if (selected) {
     return (
       <View style={styles.selectedCustomer}>
-        <Avatar name={selected.fullName} size={38} />
+        <Avatar name={selected.fullName} size={42} />
         <View style={styles.selectedCustomerInfo}>
-          <Text style={styles.selectedCustomerName}>{selected.fullName}</Text>
-          <Text style={styles.selectedCustomerPhone}>{selected.phoneNo}</Text>
+          <Text style={styles.selectedCustomerName} numberOfLines={1}>
+            {selected.fullName}
+          </Text>
+          <View style={styles.selectedCustomerMeta}>
+            <Ionicons name="call-outline" size={11} color={COLORS.textMuted} />
+            <Text style={styles.selectedCustomerPhone}>{selected.phoneNo}</Text>
+          </View>
+        </View>
+        <View style={styles.selectedCustomerBadge}>
+          <Ionicons name="checkmark-circle" size={12} color={COLORS.success} />
+          <Text style={styles.selectedCustomerBadgeText}>Selected</Text>
         </View>
         <TouchableOpacity
           onPress={onClear}
           style={styles.clearCustomer}
           activeOpacity={0.7}
+          hitSlop={10}
         >
           <Ionicons name="close-circle" size={20} color={COLORS.textMuted} />
         </TouchableOpacity>
@@ -535,12 +625,14 @@ export default function CounterSaleScreen() {
     ),
   );
   const [discountAmount, setDiscountAmount] = useState(0);
-  const [notifyCustomer, setNotifyCustomer] = useState(false);
+  // const [notifyCustomer, setNotifyCustomer] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Modals
   const [showServicePicker, setShowServicePicker] = useState(false);
   const [showPartPicker, setShowPartPicker] = useState(false);
+  const [showManualServiceModal, setShowManualServiceModal] = useState(false);
+  const [showManualPartModal, setShowManualPartModal] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
 
   // Repair order link (for prefill tracking)
@@ -565,6 +657,10 @@ export default function CounterSaleScreen() {
   const removeService = (i) =>
     setServices((prev) => prev.filter((_, idx) => idx !== i));
 
+  const addManualService = (item) => {
+    setServices((prev) => [...prev, item]);
+  };
+
   const addPart = (item) => {
     setParts((prev) => [
       ...prev,
@@ -584,6 +680,10 @@ export default function CounterSaleScreen() {
   const removePart = (i) =>
     setParts((prev) => prev.filter((_, idx) => idx !== i));
 
+  const addManualPart = (item) => {
+    setParts((prev) => [...prev, item]);
+  };
+
   const updatePartQty = (i, qty) => {
     setParts((prev) =>
       prev.map((p, idx) =>
@@ -598,8 +698,42 @@ export default function CounterSaleScreen() {
     setTags((prev) => prev.filter((_, idx) => idx !== i));
 
   // ── Totals ───────────────────────────────────────────────────────
-  const { servicesSubTotal, partsSubTotal, labourCharge, totalAmount } =
+  const { servicesSubTotal, partsSubTotal, taxAmount, totalAmount } =
     computeTotals(services, parts, discountAmount);
+
+  const grossTotal = useMemo(
+    () => servicesSubTotal + partsSubTotal + taxAmount,
+    [servicesSubTotal, partsSubTotal, taxAmount],
+  );
+  const itemCount = services.length + parts.length;
+
+  // Pulse the footer total whenever it changes
+  const totalPulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(totalPulse, {
+        toValue: 1.05,
+        duration: 110,
+        useNativeDriver: true,
+      }),
+      Animated.spring(totalPulse, {
+        toValue: 1,
+        friction: 5,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [totalAmount, totalPulse]);
+
+  const handleDiscountChange = (raw) => {
+    const cleaned = raw.replace(/[^0-9.]/g, "");
+    const parsed = parseFloat(cleaned);
+    if (Number.isNaN(parsed)) {
+      setDiscountAmount(0);
+      return;
+    }
+    // Cap discount at gross total — never produce a negative invoice
+    setDiscountAmount(Math.min(parsed, grossTotal));
+  };
 
   // ── Submit ───────────────────────────────────────────────────────
   const handlePrepareInvoice = async () => {
@@ -619,9 +753,8 @@ export default function CounterSaleScreen() {
         services,
         parts,
         tags: tags.map((t) => t.name),
-        labourPercent: LABOUR_PERCENT,
         discountAmount,
-        notifyCustomer,
+        // notifyCustomer,
       });
       const invoice = res.data?.data?.invoice;
       // Navigate to invoice detail so user can share immediately
@@ -648,6 +781,48 @@ export default function CounterSaleScreen() {
         }
       />
 
+      {/* Sticky context strip — quick state at a glance */}
+      <View style={styles.contextStrip}>
+        <View style={styles.contextChip}>
+          <Ionicons
+            name={customer ? "person-circle" : "person-circle-outline"}
+            size={14}
+            color={customer ? COLORS.success : COLORS.textMuted}
+          />
+          <Text
+            style={[
+              styles.contextChipText,
+              customer && { color: COLORS.textPrimary },
+            ]}
+            numberOfLines={1}
+          >
+            {customer ? customer.fullName : "No customer"}
+          </Text>
+        </View>
+        <View style={styles.contextDivider} />
+        <View style={styles.contextChip}>
+          <Ionicons
+            name="receipt-outline"
+            size={13}
+            color={COLORS.textSecondary}
+          />
+          <Text style={styles.contextChipText}>
+            {itemCount} {itemCount === 1 ? "item" : "items"}
+          </Text>
+        </View>
+        <View style={styles.contextDivider} />
+        <View style={styles.contextChip}>
+          <Ionicons
+            name="pricetag-outline"
+            size={13}
+            color={COLORS.textSecondary}
+          />
+          <Text style={styles.contextChipText}>
+            {tags.length} {tags.length === 1 ? "tag" : "tags"}
+          </Text>
+        </View>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -655,7 +830,14 @@ export default function CounterSaleScreen() {
       >
         {/* Customer search / selected */}
         <View style={styles.customerSection}>
-          <Text style={styles.sectionTitle}>Customer</Text>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>Customer</Text>
+            {!customer && (
+              <Text style={styles.sectionTitleHint}>
+                Search by name or phone
+              </Text>
+            )}
+          </View>
           <CustomerSearchBar
             selected={customer}
             onSelect={setCustomer}
@@ -666,8 +848,16 @@ export default function CounterSaleScreen() {
         {/* SERVICES */}
         <SectionBlock
           label="SERVICES"
+          icon="construct-outline"
+          count={services.length}
+          subtotal={servicesSubTotal}
           onAdd={() => setShowServicePicker(true)}
+          addLabel="Catalog"
+          secondaryActionLabel="Manual"
+          onSecondaryAction={() => setShowManualServiceModal(true)}
           isEmpty={!services.length}
+          emptyHint="Add a service to start the bill"
+          emptyIcon="construct-outline"
         >
           {services.map((s, i) => (
             <ServiceLineRow
@@ -681,8 +871,16 @@ export default function CounterSaleScreen() {
         {/* PARTS */}
         <SectionBlock
           label="PARTS / STOCKS"
+          icon="cube-outline"
+          count={parts.length}
+          subtotal={partsSubTotal}
           onAdd={() => setShowPartPicker(true)}
+          addLabel="Catalog"
+          secondaryActionLabel="Manual"
+          onSecondaryAction={() => setShowManualPartModal(true)}
           isEmpty={!parts.length}
+          emptyHint="Pull parts from inventory if needed"
+          emptyIcon="cube-outline"
         >
           {parts.map((p, i) => (
             <PartLineRow
@@ -697,8 +895,12 @@ export default function CounterSaleScreen() {
         {/* TAGS */}
         <SectionBlock
           label="TAGS"
+          icon="pricetag-outline"
+          count={tags.length}
           onAdd={() => setShowTagModal(true)}
           isEmpty={!tags.length}
+          emptyHint="Optional — categorize this invoice"
+          emptyIcon="pricetag-outline"
         >
           <View style={styles.tagsWrap}>
             {tags.map((t, i) => (
@@ -714,6 +916,14 @@ export default function CounterSaleScreen() {
 
         {/* SUMMARY */}
         <View style={styles.summaryBlock}>
+          <View style={styles.summaryHeader}>
+            <Ionicons
+              name="calculator-outline"
+              size={14}
+              color={COLORS.primary}
+            />
+            <Text style={styles.summaryHeaderText}>Bill Summary</Text>
+          </View>
           <SummaryRow
             label="Services Sub Total"
             value={servicesSubTotal.toFixed(2)}
@@ -724,39 +934,74 @@ export default function CounterSaleScreen() {
             value={partsSubTotal.toFixed(2)}
           />
           <View style={styles.summaryDivider} />
-          <SummaryRow label="Labour Charges" value={labourCharge.toFixed(2)} />
-          <View style={styles.summaryDivider} />
           <SummaryRow
-            label="Discount"
-            value={parseFloat(discountAmount).toFixed(2)}
+            label="Tax"
+            value={taxAmount.toFixed(2)}
           />
+          <View style={styles.summaryDivider} />
+
+          {/* Inline editable discount */}
+          <View style={styles.summaryRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.summaryLabel}>Discount</Text>
+              <Text style={styles.summarySub}>Tap to edit</Text>
+            </View>
+            <View style={styles.discountInputBox}>
+              <Text style={styles.summaryRupee}>₹</Text>
+              <TextInput
+                value={discountAmount === 0 ? "" : String(discountAmount)}
+                onChangeText={handleDiscountChange}
+                placeholder="0.00"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="decimal-pad"
+                style={styles.discountInput}
+                selectTextOnFocus
+              />
+            </View>
+          </View>
+
+          {discountAmount > 0 && (
+            <>
+              <View style={styles.summaryDivider} />
+              <View style={styles.savingsRow}>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={13}
+                  color={COLORS.success}
+                />
+                <Text style={styles.savingsText}>
+                  You saved {rupee(discountAmount)} on this invoice
+                </Text>
+              </View>
+            </>
+          )}
+
           <View style={styles.summaryDivider} />
           <SummaryRow label="TOTAL" value={totalAmount.toFixed(2)} highlight />
-        </View>
-
-        {/* Notify toggle */}
-        <View style={styles.toggleWrap}>
-          <AppToggle
-            label="Notify Customer (SMS & e-mail)?"
-            icon="notifications-outline"
-            value={notifyCustomer}
-            onChange={setNotifyCustomer}
-          />
         </View>
       </ScrollView>
 
       {/* Floating footer */}
       <View style={[styles.footer, { bottom: tabBarHeight }]}>
         <View style={styles.footerTotal}>
-          <Text style={styles.footerTotalLabel}>Total</Text>
-          <Text style={styles.footerTotalValue}>{rupee(totalAmount)}</Text>
+          <Text style={styles.footerTotalLabel}>
+            Total {itemCount > 0 ? `· ${itemCount}` : ""}
+          </Text>
+          <Animated.Text
+            style={[
+              styles.footerTotalValue,
+              { transform: [{ scale: totalPulse }] },
+            ]}
+          >
+            {rupee(totalAmount)}
+          </Animated.Text>
         </View>
         <AppButton
           title={saving ? "Creating Invoice…" : "Prepare Invoice"}
           variant="gradient"
           size="lg"
           onPress={handlePrepareInvoice}
-          disabled={saving}
+          disabled={saving || !customer || itemCount === 0}
           style={{ flex: 1 }}
         />
       </View>
@@ -773,6 +1018,22 @@ export default function CounterSaleScreen() {
         itemType="part"
         onClose={() => setShowPartPicker(false)}
         onSelect={addPart}
+      />
+      <ManualLineItemModal
+        visible={showManualServiceModal}
+        itemType="service"
+        title="Add Manual Service"
+        lineTotalMode="preTax"
+        onClose={() => setShowManualServiceModal(false)}
+        onSubmit={addManualService}
+      />
+      <ManualLineItemModal
+        visible={showManualPartModal}
+        itemType="part"
+        title="Add Manual Part"
+        lineTotalMode="preTax"
+        onClose={() => setShowManualPartModal(false)}
+        onSubmit={addManualPart}
       />
       <TagPickerModal
         visible={showTagModal}
@@ -805,12 +1066,51 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
 
+  // Context strip
+  contextStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SIZES.sm,
+    paddingHorizontal: SIZES.screenPadding,
+    paddingVertical: SIZES.sm,
+    backgroundColor: COLORS.bgCard,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  contextChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    flexShrink: 1,
+  },
+  contextChipText: {
+    fontFamily: FONTS.medium,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+    flexShrink: 1,
+  },
+  contextDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: COLORS.borderLight,
+  },
+
   // Customer section
   customerSection: { gap: SIZES.sm },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+  },
   sectionTitle: {
     fontFamily: FONTS.semibold,
     fontSize: SIZES.textBase,
     color: COLORS.textPrimary,
+  },
+  sectionTitleHint: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
   },
 
   selectedCustomer: {
@@ -824,16 +1124,38 @@ const styles = StyleSheet.create({
     padding: SIZES.md,
     ...SHADOWS.sm,
   },
-  selectedCustomerInfo: { flex: 1 },
+  selectedCustomerInfo: { flex: 1, gap: 3 },
   selectedCustomerName: {
     fontFamily: FONTS.semibold,
     fontSize: SIZES.textBase,
     color: COLORS.textPrimary,
+    letterSpacing: -0.1,
+  },
+  selectedCustomerMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   selectedCustomerPhone: {
     fontFamily: FONTS.regular,
-    fontSize: SIZES.textSm,
+    fontSize: SIZES.textXs,
     color: COLORS.textMuted,
+  },
+  selectedCustomerBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: SIZES.sm,
+    paddingVertical: 3,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.successLight,
+  },
+  selectedCustomerBadgeText: {
+    fontFamily: FONTS.semibold,
+    fontSize: 9,
+    color: COLORS.success,
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
   },
   clearCustomer: { padding: 4 },
 
@@ -889,6 +1211,26 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryLight,
     paddingHorizontal: SIZES.md,
     paddingVertical: SIZES.sm + 2,
+    gap: SIZES.sm,
+  },
+  sectionHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
+  },
+  sectionHeaderRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sectionIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.bgCard,
+    alignItems: "center",
+    justifyContent: "center",
   },
   sectionLabel: {
     fontFamily: FONTS.bold,
@@ -896,10 +1238,46 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     letterSpacing: 0.5,
   },
+  sectionCountPill: {
+    minWidth: 20,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.bgCard,
+    alignItems: "center",
+  },
+  sectionCountText: {
+    fontFamily: FONTS.bold,
+    fontSize: 10,
+    color: COLORS.primary,
+  },
+  sectionSubtotal: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textXs,
+    color: COLORS.textPrimary,
+    letterSpacing: -0.2,
+  },
+  secondaryChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusFull,
+    paddingHorizontal: SIZES.sm + 2,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: COLORS.primary + "30",
+  },
+  secondaryChipText: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textXs,
+    color: COLORS.primary,
+    letterSpacing: 0.2,
+  },
   addChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 3,
     backgroundColor: COLORS.primary,
     borderRadius: SIZES.radiusFull,
     paddingHorizontal: SIZES.sm + 2,
@@ -909,11 +1287,30 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.semibold,
     fontSize: SIZES.textXs,
     color: COLORS.white,
+    letterSpacing: 0.2,
   },
-  sectionEmpty: { padding: SIZES.md, alignItems: "center" },
+  sectionEmpty: {
+    padding: SIZES.md,
+    alignItems: "center",
+    gap: 4,
+  },
+  sectionEmptyIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.bgSection,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
   sectionEmptyText: {
-    fontFamily: FONTS.regular,
+    fontFamily: FONTS.semibold,
     fontSize: SIZES.textSm,
+    color: COLORS.textSecondary,
+  },
+  sectionEmptyHint: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
     color: COLORS.textMuted,
   },
 
@@ -927,11 +1324,20 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.borderLight,
     gap: SIZES.sm,
   },
-  lineInfo: { flex: 1 },
+  lineLeftIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: SIZES.radiusSm,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  lineInfo: { flex: 1, minWidth: 0 },
   lineName: {
-    fontFamily: FONTS.medium,
+    fontFamily: FONTS.semibold,
     fontSize: SIZES.textSm,
     color: COLORS.textPrimary,
+    letterSpacing: -0.1,
   },
   lineSub: {
     fontFamily: FONTS.regular,
@@ -940,13 +1346,21 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   linePrice: {
-    fontFamily: FONTS.semibold,
+    fontFamily: FONTS.bold,
     fontSize: SIZES.textSm,
     color: COLORS.textPrimary,
-    width: 64,
+    width: 70,
     textAlign: "right",
+    letterSpacing: -0.2,
   },
-  lineRemove: { width: 26, alignItems: "center" },
+  lineRemove: {
+    width: 24,
+    height: 24,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.errorLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   // Qty stepper
   qtyStepper: {
@@ -1027,7 +1441,58 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     ...SHADOWS.sm,
   },
+  summaryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: SIZES.md,
+    paddingVertical: SIZES.sm + 2,
+    backgroundColor: COLORS.primaryLight,
+  },
+  summaryHeaderText: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textSm,
+    color: COLORS.textPrimary,
+    letterSpacing: 0.5,
+  },
   summaryDivider: { height: 1, backgroundColor: COLORS.borderLight },
+
+  // Discount input
+  discountInputBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.bg,
+    borderWidth: 1,
+    borderColor: COLORS.primary + "60",
+    borderRadius: SIZES.radiusSm,
+    paddingHorizontal: SIZES.sm,
+    paddingVertical: 4,
+    width: 120,
+  },
+  discountInput: {
+    flex: 1,
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textBase,
+    color: COLORS.textPrimary,
+    paddingVertical: Platform.OS === "ios" ? 4 : 2,
+    textAlign: "right",
+  },
+
+  // Savings row
+  savingsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: COLORS.successLight,
+    paddingHorizontal: SIZES.md,
+    paddingVertical: 6,
+  },
+  savingsText: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textXs,
+    color: COLORS.success,
+    letterSpacing: 0.1,
+  },
   summaryRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1104,16 +1569,20 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.borderLight,
     ...SHADOWS.md,
   },
-  footerTotal: { alignItems: "flex-start", minWidth: 80 },
+  footerTotal: { alignItems: "flex-start", minWidth: 90 },
   footerTotalLabel: {
-    fontFamily: FONTS.regular,
-    fontSize: SIZES.textXs,
+    fontFamily: FONTS.semibold,
+    fontSize: 10,
     color: COLORS.textMuted,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
   },
   footerTotalValue: {
     fontFamily: FONTS.bold,
-    fontSize: SIZES.textBase,
+    fontSize: SIZES.textLg,
     color: COLORS.primary,
+    letterSpacing: -0.4,
+    marginTop: 1,
   },
 
   // Catalog picker

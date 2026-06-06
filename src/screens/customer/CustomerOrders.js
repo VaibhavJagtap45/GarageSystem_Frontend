@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet,
   ActivityIndicator, FlatList, ScrollView,
@@ -13,6 +13,8 @@ import { inr, fmtDate } from "../../utils/portalHelpers";
 import Badge from "../../components/portal/Badge";
 import NavBar from "../../components/portal/NavBar";
 import Empty from "../../components/portal/Empty";
+import PortalHeroCard from "../../components/portal/PortalHeroCard";
+import SectionHeader from "../../components/portal/SectionHeader";
 
 const FILTERS = [
   { key: null,            label: "All",        icon: "layers-outline"           },
@@ -35,14 +37,22 @@ export default function CustomerOrders({ navigation }) {
   const tabBarH = useBottomTabBarHeight();
   const [orders,  setOrders]  = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(false);
   const [filt,    setFilt]    = useState(null);
 
+  const activeCount = orders.filter((order) =>
+    ["created", "in_progress", "vehicle_ready"].includes(order.status),
+  ).length;
+  const completedCount = orders.filter((order) => order.status === "completed").length;
+
   const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
     try {
-      setLoading(true);
       const r = await customerGetOrders(filt ? { status: filt } : {});
       setOrders(r.data?.data?.orders || []);
     } catch {
+      setError(true);
       setOrders([]);
     } finally {
       setLoading(false);
@@ -50,7 +60,6 @@ export default function CustomerOrders({ navigation }) {
   }, [filt]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
-  useEffect(() => { load(); }, [load]);
 
   const renderItem = ({ item: o }) => {
     const accent = STATUS_COLOR[o.status] ?? COLORS.primary;
@@ -96,33 +105,73 @@ export default function CustomerOrders({ navigation }) {
     <SafeAreaView style={s.safe}>
       <NavBar title="My Orders" />
 
+      <PortalHeroCard
+        eyebrow="Order tracking"
+        title="Track every repair job with better clarity."
+        subtitle="Filter by status, open a job, and follow progress from request to completion."
+        icon="car-outline"
+        stats={[
+          { label: "Total", value: String(orders.length) },
+          { label: "Active", value: String(activeCount) },
+          { label: "Done", value: String(completedCount) },
+        ]}
+      />
+
       {/* Status filter chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ maxHeight: 48 }}
-        contentContainerStyle={{ paddingHorizontal: SIZES.screenPadding, gap: 8, alignItems: "center" }}
-      >
-        {FILTERS.map((f) => (
-          <TouchableOpacity
-            key={String(f.key)}
-            style={[chip.base, filt === f.key && chip.on]}
-            onPress={() => setFilt(f.key)}
-          >
-            <Ionicons
-              name={f.icon}
-              size={13}
-              color={filt === f.key ? COLORS.white : COLORS.textMuted}
-            />
-            <Text style={[chip.txt, filt === f.key && chip.txtOn]}>{f.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={s.filterWrap}>
+        <SectionHeader
+          title="Status filters"
+          subtitle="Jump directly to the orders you care about right now."
+        />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ maxHeight: 48 }}
+          contentContainerStyle={{ gap: 8, alignItems: "center" }}
+        >
+          {FILTERS.map((f) => (
+            <TouchableOpacity
+              key={String(f.key)}
+              style={[chip.base, filt === f.key && chip.on]}
+              onPress={() => setFilt(f.key)}
+            >
+              <Ionicons
+                name={f.icon}
+                size={13}
+                color={filt === f.key ? COLORS.white : COLORS.textMuted}
+              />
+              <Text style={[chip.txt, filt === f.key && chip.txtOn]}>{f.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {loading ? (
         <ActivityIndicator color={COLORS.primary} style={{ marginTop: 40 }} />
+      ) : error ? (
+        <View style={{ alignItems: "center", marginTop: 60, gap: 12 }}>
+          <Ionicons name="cloud-offline-outline" size={48} color={COLORS.textMuted} />
+          <Text style={{ fontFamily: FONTS.semibold, fontSize: SIZES.textBase, color: COLORS.textSecondary }}>
+            Could not load orders
+          </Text>
+          <Text style={{ fontFamily: FONTS.regular, fontSize: SIZES.textSm, color: COLORS.textMuted, textAlign: "center", paddingHorizontal: 32 }}>
+            The server may be waking up. Wait a moment and tap Retry.
+          </Text>
+          <TouchableOpacity
+            onPress={load}
+            style={{ marginTop: 8, backgroundColor: COLORS.primary, borderRadius: SIZES.radiusFull, paddingHorizontal: 28, paddingVertical: 12 }}
+          >
+            <Text style={{ fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: COLORS.white }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       ) : orders.length === 0 ? (
-        <Empty icon="car-outline" title="No orders found" sub="Try a different filter or book a service" />
+        <Empty
+          icon="car-outline"
+          title="No orders found"
+          sub="Try a different filter or book a new service request."
+          actionLabel="Browse services"
+          onAction={() => navigation.navigate("Services")}
+        />
       ) : (
         <FlatList
           data={orders}
@@ -139,10 +188,11 @@ export default function CustomerOrders({ navigation }) {
 const chip = StyleSheet.create({
   base: {
     flexDirection: "row", alignItems: "center", gap: 5,
-    paddingHorizontal: 12, paddingVertical: 7,
+    paddingHorizontal: 12, paddingVertical: 8,
     borderRadius: SIZES.radiusFull,
     borderWidth: 1, borderColor: COLORS.borderLight,
     backgroundColor: COLORS.bgCard,
+    ...SHADOWS.sm,
   },
   on:    { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   txt:   { fontFamily: FONTS.medium, fontSize: SIZES.textXs, color: COLORS.textSecondary },
@@ -151,11 +201,15 @@ const chip = StyleSheet.create({
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
+  filterWrap: {
+    paddingHorizontal: SIZES.screenPadding,
+    paddingTop: SIZES.sm,
+  },
 
   card: {
     flexDirection: "row",
     backgroundColor: COLORS.bgCard,
-    borderRadius: SIZES.radiusMd,
+    borderRadius: SIZES.radiusLg,
     padding: SIZES.md,
     marginBottom: SIZES.sm + 2,
     borderWidth: 1, borderLeftWidth: 4,

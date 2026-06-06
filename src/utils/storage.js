@@ -3,6 +3,12 @@ import { STORAGE_KEYS } from './constants';
 
 export const saveToken = (token) => AsyncStorage.setItem(STORAGE_KEYS.TOKEN, token);
 export const getToken = async () => AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+export const saveTokenExpiry = (expiresAt) =>
+  expiresAt
+    ? AsyncStorage.setItem(STORAGE_KEYS.TOKEN_EXPIRES_AT, expiresAt)
+    : AsyncStorage.removeItem(STORAGE_KEYS.TOKEN_EXPIRES_AT);
+export const getTokenExpiry = async () =>
+  AsyncStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRES_AT);
 
 export const saveUser = (user) => AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
 export const getUser = async () => {
@@ -17,5 +23,3 @@ export const getGarage = async () => {
 };
 
 export const clearStorage = () => AsyncStorage.multiRemove(Object.values(STORAGE_KEYS));
-
-

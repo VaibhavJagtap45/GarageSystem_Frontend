@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  StatusBar,
-} from "react-native";
+import { View, Text, ScrollView, StyleSheet, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TopNav from "../../components/ui/TopNav";
 import { COLORS, FONTS, SIZES } from "../../utils/constants";
@@ -14,7 +8,7 @@ import { COLORS, FONTS, SIZES } from "../../utils/constants";
 const SECTIONS = [
   {
     title: "OVERVIEW",
-    body: `This website / Mobile Application is operated by Albos Pvt. Ltd. Throughout the site, the terms "we", "us" and "our" refer to Albos Pvt Ltd. Albos Pvt Ltd offers this website, including all information, tools and services available from this site to you, the user, conditioned upon your acceptance of all terms, conditions, policies and notices stated here.
+    body: `This website / Mobile Application is operated by Aapno Pvt. Ltd. Throughout the site, the terms "we", "us" and "our" refer to Aapno Pvt Ltd. Aapno Pvt Ltd offers this website, including all information, tools and services available from this site to you, the user, conditioned upon your acceptance of all terms, conditions, policies and notices stated here.
 
 By visiting our site and/or purchasing something from us, you engage in our "Service" and agree to be bound by the following terms and conditions ("Terms of Service", "Terms"), including those additional terms and conditions and policies referenced herein and/or available by hyperlink. These Terms of Service apply to all users of the site, including without limitation users who are browsers, vendors, customers, merchants, and/or contributors of content.
 
@@ -23,7 +17,7 @@ Please read these Terms of Service carefully before accessing or using our websi
 Any new features or tools which are added to the current website/mobile application shall also be subject to the Terms of Service. You can review the most current version of the Terms of Service at any time on this page. We reserve the right to update, change or replace any part of these Terms of Service by posting updates and/or changes to our website.`,
   },
   {
-    title: "SECTION 1 – ApnoGarage USAGE TERMS",
+    title: "SECTION 1 – Aapno Garage USAGE TERMS",
     body: `By agreeing to these Terms of Service, you represent that you are at least the age of majority in your state or province of residence, or that you are the age of majority in your state or province of residence and you have given us your consent to allow any of your minor dependents to use this site.
 
 You may not use our products for any illegal or unauthorized purpose nor may you, in the use of the Service, violate any laws in your jurisdiction (including but not limited to copyright laws).
@@ -38,7 +32,7 @@ A breach or violation of any of the Terms will result in an immediate terminatio
 
 You understand that your content (not including credit card information), may be transferred unencrypted and involve (a) transmissions over various networks; and (b) changes to conform and adapt to technical requirements of connecting networks or devices. Credit card information is always encrypted during transfer over networks.
 
-You agree not to reproduce, duplicate, copy, sell, resell or exploit any portion of the ApnoGarage, use of the ApnoGarage, or access to the ApnoGarage or any contact on the website through which the service is provided, without express written permission by us.`,
+You agree not to reproduce, duplicate, copy, sell, resell or exploit any portion of the Aapno Garage, use of the Aapno Garage, or access to the Aapno Garage or any contact on the website through which the service is provided, without express written permission by us.`,
   },
   {
     title: "SECTION 3 – ACCURACY, COMPLETENESS AND TIMELINESS OF INFORMATION",
@@ -110,11 +104,11 @@ We reserve the right to terminate your use of the Service or any related website
 
 You expressly agree that your use of, or inability to use, the service is at your sole risk. The service and all products and services delivered to you through the service are (except as expressly stated by us) provided 'as is' and 'as available' for your use, without any representation, warranties or conditions of any kind.
 
-In no case shall Albos Pvt Ltd, our directors, officers, employees, affiliates, agents, contractors, interns, suppliers, service providers or licensors be liable for any injury, loss, claim, or any direct, indirect, incidental, punitive, special, or consequential damages of any kind, including, without limitation lost profits, lost revenue, lost savings, loss of data, replacement costs, or any similar damages.`,
+In no case shall Aapno Pvt Ltd, our directors, officers, employees, affiliates, agents, contractors, interns, suppliers, service providers or licensors be liable for any injury, loss, claim, or any direct, indirect, incidental, punitive, special, or consequential damages of any kind, including, without limitation lost profits, lost revenue, lost savings, loss of data, replacement costs, or any similar damages.`,
   },
   {
     title: "SECTION 14 – INDEMNIFICATION",
-    body: `You agree to indemnify, defend and hold harmless Albos Pvt Ltd and our parent, subsidiaries, affiliates, partners, officers, directors, agents, contractors, licensors, service providers, subcontractors, suppliers, interns and employees, harmless from any claim or demand, including reasonable attorneys' fees, made by any third-party due to or arising out of your breach of these Terms of Service or the documents they incorporate by reference, or your violation of any law or the rights of a third-party.`,
+    body: `You agree to indemnify, defend and hold harmless Aapno Pvt Ltd and our parent, subsidiaries, affiliates, partners, officers, directors, agents, contractors, licensors, service providers, subcontractors, suppliers, interns and employees, harmless from any claim or demand, including reasonable attorneys' fees, made by any third-party due to or arising out of your breach of these Terms of Service or the documents they incorporate by reference, or your violation of any law or the rights of a third-party.`,
   },
   {
     title: "SECTION 15 – SEVERABILITY",
@@ -146,9 +140,9 @@ We reserve the right, at our sole discretion, to update, change or replace any p
   },
   {
     title: "SECTION 20 – CONTACT INFORMATION",
-    body: `Questions about the Terms of Service should be sent to us at support@albos.com.
+    body: `Questions about the Terms of Service should be sent to us at support@Aapno.com.
 
-Albos Pvt. Ltd.\nContact: Chandra Prakash\nEmail: albostechnologies016@gmail.com`,
+Aapno Pvt. Ltd.\nContact: Chandra Prakash\nEmail: Aapnotechnologies016@gmail.com`,
   },
 ];
 
@@ -173,7 +167,9 @@ export default function TermsOfService({ navigation }) {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Terms of Services</Text>
-          <Text style={styles.headerMeta}>Albos Pvt. Ltd. · Last updated: 2025</Text>
+          <Text style={styles.headerMeta}>
+            Aapno Pvt. Ltd. · Last updated: 2025
+          </Text>
         </View>
 
         {/* Sections */}
@@ -186,7 +182,9 @@ export default function TermsOfService({ navigation }) {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>© 2025 Albos Pvt. Ltd. All rights reserved.</Text>
+          <Text style={styles.footerText}>
+            © 2025 Aapno Pvt. Ltd. All rights reserved.
+          </Text>
         </View>
       </ScrollView>
     </View>

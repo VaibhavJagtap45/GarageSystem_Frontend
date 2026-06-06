@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -10,9 +10,12 @@ import {
   FlatList,
   TextInput,
   ActivityIndicator,
+  Animated,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import * as Contacts from "expo-contacts";
@@ -25,77 +28,76 @@ import axiosClient from "../../api/axios";
 import { addUser } from "../../api/user";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Strip country code and non-digits, return last 10 digits */
 function normalisePhone(raw) {
   if (!raw) return "";
   const digits = raw.replace(/\D/g, "");
-  // Remove leading 91 (India) or 0
   if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
-  if (digits.length === 11 && digits.startsWith("0")) return digits.slice(1);
+  if (digits.length === 11 && digits.startsWith("0"))  return digits.slice(1);
   return digits.slice(-10);
 }
 
-/** Get first valid phone number from a contact */
 function pickPhone(contact) {
   const phones = contact.phoneNumbers ?? [];
-  // Prefer mobile numbers
-  const mobile = phones.find((p) =>
-    /mobile|cell|phone/i.test(p.label ?? ""),
-  );
+  const mobile = phones.find((p) => /mobile|cell|phone/i.test(p.label ?? ""));
   const raw = (mobile ?? phones[0])?.number ?? "";
   return normalisePhone(raw);
 }
 
-// ─── Contact row ──────────────────────────────────────────────────────────────
+function getInitials(name) {
+  if (!name) return "?";
+  return name.split(" ").slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join("");
+}
 
+// ─── Contact row ──────────────────────────────────────────────────────────────
 function ContactRow({ contact, onSelect }) {
   const phone = pickPhone(contact);
   const name  = contact.name || "Unknown";
-  const initials = name
-    .split(" ")
-    .slice(0, 2)
-    .map((w) => w.charAt(0).toUpperCase())
-    .join("");
+  const initials = getInitials(name);
+  const disabled = !phone;
 
   return (
     <TouchableOpacity
-      style={styles.contactRow}
-      onPress={() => onSelect(contact, phone)}
+      style={[styles.contactRow, disabled && { opacity: 0.55 }]}
+      onPress={() => !disabled && onSelect(contact, phone)}
       activeOpacity={0.7}
+      disabled={disabled}
     >
       <View style={styles.contactAvatar}>
         <Text style={styles.contactInitials}>{initials}</Text>
       </View>
       <View style={styles.contactInfo}>
         <Text style={styles.contactName} numberOfLines={1}>{name}</Text>
-        <Text style={styles.contactPhone}>{phone || "No valid number"}</Text>
+        <View style={styles.contactPhoneRow}>
+          <Ionicons name="call-outline" size={11} color={COLORS.textMuted} />
+          <Text style={styles.contactPhone}>{phone || "No valid number"}</Text>
+        </View>
       </View>
-      {phone ? (
-        <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+      {disabled ? (
+        <View style={styles.noPhoneBadge}>
+          <Text style={styles.noPhoneBadgeText}>No number</Text>
+        </View>
       ) : (
-        <Text style={styles.noPhoneBadge}>No number</Text>
+        <View style={styles.contactArrow}>
+          <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+        </View>
       )}
     </TouchableOpacity>
   );
 }
 
 // ─── Contacts Picker Modal ────────────────────────────────────────────────────
-
 function ContactsModal({ visible, onClose, onSelect }) {
-  const [contacts,  setContacts]  = useState([]);
-  const [query,     setQuery]     = useState("");
-  const [loading,   setLoading]   = useState(false);
+  const [contacts, setContacts] = useState([]);
+  const [query,    setQuery]    = useState("");
+  const [loading,  setLoading]  = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const loadContacts = useCallback(async () => {
     setLoading(true);
     try {
       const { status } = await Contacts.requestPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Permission Denied",
-          "Please allow contacts access in your phone settings to use this feature.",
-        );
+        Alert.alert("Permission Denied", "Please allow contacts access in your phone settings.");
         onClose();
         return;
       }
@@ -103,7 +105,6 @@ function ContactsModal({ visible, onClose, onSelect }) {
         fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
         sort: Contacts.SortTypes.FirstName,
       });
-      // Keep only contacts that have at least one phone number
       const withPhone = data.filter((c) => c.phoneNumbers?.length > 0);
       setContacts(withPhone);
     } catch {
@@ -114,8 +115,7 @@ function ContactsModal({ visible, onClose, onSelect }) {
     }
   }, []);
 
-  // Load when modal opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
       setQuery("");
       loadContacts();
@@ -128,43 +128,51 @@ function ContactsModal({ visible, onClose, onSelect }) {
     return contacts.filter(
       (c) =>
         c.name?.toLowerCase().includes(q) ||
-        (c.phoneNumbers ?? []).some((p) =>
-          p.number?.replace(/\D/g, "").includes(q),
-        ),
+        (c.phoneNumbers ?? []).some((p) => p.number?.replace(/\D/g, "").includes(q)),
     );
   }, [contacts, query]);
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.modalSafe} edges={["top", "bottom"]}>
-        {/* Header */}
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Pick a Contact</Text>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="close" size={22} color={COLORS.textPrimary} />
+          <View>
+            <Text style={styles.modalTitle}>Pick a Contact</Text>
+            <Text style={styles.modalSubtitle}>
+              {loading ? "Loading…" : `${filtered.length} ${filtered.length === 1 ? "contact" : "contacts"}`}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={onClose} style={styles.modalClose} hitSlop={8}>
+            <Ionicons name="close" size={20} color={COLORS.textPrimary} />
           </TouchableOpacity>
         </View>
 
-        {/* Search */}
-        <View style={styles.searchWrap}>
-          <Ionicons name="search-outline" size={16} color={COLORS.textMuted} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search name or number…"
-            placeholderTextColor={COLORS.textMuted}
-            value={query}
-            onChangeText={setQuery}
-            clearButtonMode="while-editing"
-            returnKeyType="search"
-          />
+        <View style={styles.modalSearchWrap}>
+          <View style={[styles.modalSearch, searchFocused && styles.modalSearchFocused]}>
+            <Ionicons
+              name="search-outline"
+              size={18}
+              color={searchFocused ? COLORS.primary : COLORS.textMuted}
+            />
+            <TextInput
+              style={styles.modalSearchInput}
+              placeholder="Search name or number…"
+              placeholderTextColor={COLORS.textMuted}
+              value={query}
+              onChangeText={setQuery}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              clearButtonMode="while-editing"
+              returnKeyType="search"
+            />
+            {query.length > 0 && Platform.OS === "android" && (
+              <TouchableOpacity onPress={() => setQuery("")} hitSlop={10}>
+                <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        {/* List */}
         {loading ? (
           <View style={styles.modalCenter}>
             <ActivityIndicator size="large" color={COLORS.primary} />
@@ -172,9 +180,16 @@ function ContactsModal({ visible, onClose, onSelect }) {
           </View>
         ) : filtered.length === 0 ? (
           <View style={styles.modalCenter}>
-            <Ionicons name="people-outline" size={48} color={COLORS.borderLight} />
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="people-outline" size={36} color={COLORS.textMuted} />
+            </View>
+            <Text style={styles.emptyTitle}>
+              {query ? "No matches found" : "No contacts available"}
+            </Text>
             <Text style={styles.emptyText}>
-              {query ? "No contacts match your search" : "No contacts with phone numbers"}
+              {query
+                ? `Nothing matches "${query}"`
+                : "We couldn't find any contacts with phone numbers"}
             </Text>
           </View>
         ) : (
@@ -190,7 +205,7 @@ function ContactsModal({ visible, onClose, onSelect }) {
                 }}
               />
             )}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ItemSeparatorComponent={() => <View style={styles.contactSeparator} />}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingBottom: 32 }}
           />
@@ -201,16 +216,18 @@ function ContactsModal({ visible, onClose, onSelect }) {
 }
 
 // ─── Section Card ─────────────────────────────────────────────────────────────
-
-function SectionCard({ title, icon, children, rightElement }) {
+function SectionCard({ title, subtitle, icon, children, rightElement, accent = COLORS.primary }) {
   return (
     <View style={styles.sectionCard}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionLeft}>
-          <View style={styles.sectionIconWrap}>
-            <Ionicons name={icon} size={16} color={COLORS.primary} />
+          <View style={[styles.sectionIconWrap, { backgroundColor: accent + "18" }]}>
+            <Ionicons name={icon} size={16} color={accent} />
           </View>
-          <Text style={styles.sectionTitle}>{title}</Text>
+          <View>
+            <Text style={styles.sectionTitle}>{title}</Text>
+            {subtitle && <Text style={styles.sectionSubtitle}>{subtitle}</Text>}
+          </View>
         </View>
         {rightElement}
       </View>
@@ -219,8 +236,37 @@ function SectionCard({ title, icon, children, rightElement }) {
   );
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+// ─── Stepper Indicator ────────────────────────────────────────────────────────
+function StepIndicator({ name, phone, vehicle }) {
+  const personalDone = !!(name && phone);
+  return (
+    <View style={styles.stepperWrap}>
+      <View style={styles.stepNode}>
+        <View style={[styles.stepCircle, personalDone && styles.stepCircleDone]}>
+          {personalDone ? (
+            <Ionicons name="checkmark" size={12} color={COLORS.white} />
+          ) : (
+            <Text style={styles.stepNumber}>1</Text>
+          )}
+        </View>
+        <Text style={[styles.stepLabel, personalDone && styles.stepLabelDone]}>Personal</Text>
+      </View>
+      <View style={[styles.stepLine, personalDone && styles.stepLineActive]} />
+      <View style={styles.stepNode}>
+        <View style={[styles.stepCircle, vehicle && styles.stepCircleDone]}>
+          {vehicle ? (
+            <Ionicons name="checkmark" size={12} color={COLORS.white} />
+          ) : (
+            <Text style={styles.stepNumber}>2</Text>
+          )}
+        </View>
+        <Text style={[styles.stepLabel, vehicle && styles.stepLabelDone]}>Vehicle</Text>
+      </View>
+    </View>
+  );
+}
 
+// ─── Screen ───────────────────────────────────────────────────────────────────
 export default function AddCustomerScreen() {
   const navigation   = useNavigation();
   const tabBarHeight = useBottomTabBarHeight();
@@ -234,42 +280,31 @@ export default function AddCustomerScreen() {
   const [loading,  setLoading]  = useState(false);
   const [showContacts, setShowContacts] = useState(false);
 
-  // ── Vehicle fields (optional) ─────────────────────────────────────
+  // ── Vehicle fields ─────────────────────────────────────────────────
   const [includeVehicle,    setIncludeVehicle]    = useState(false);
   const [vehicleBrand,      setVehicleBrand]      = useState(null);
   const [vehicleModel,      setVehicleModel]      = useState(null);
   const [vehicleRegisterNo, setVehicleRegisterNo] = useState("");
   const [vehicleVariant,    setVehicleVariant]    = useState("");
+  const [vehicleKmDriven,   setVehicleKmDriven]   = useState("");
   const [brandOptions,      setBrandOptions]      = useState([]);
   const [modelOptions,      setModelOptions]      = useState([]);
   const [brandsLoading,     setBrandsLoading]     = useState(false);
   const [modelsLoading,     setModelsLoading]     = useState(false);
 
-  // Load brands once on mount
   useEffect(() => {
     setBrandsLoading(true);
-    axiosClient
-      .get(VEHICLE_ENDPOINTS.BRANDS)
-      .then((r) =>
-        setBrandOptions(
-          (r.data?.data?.brands ?? []).map((b) => ({ value: b, label: b })),
-        ),
-      )
+    axiosClient.get(VEHICLE_ENDPOINTS.BRANDS)
+      .then((r) => setBrandOptions((r.data?.data?.brands ?? []).map((b) => ({ value: b, label: b }))))
       .catch(() => setBrandOptions([]))
       .finally(() => setBrandsLoading(false));
   }, []);
 
-  // Reload models whenever brand changes
   useEffect(() => {
     if (!vehicleBrand) { setModelOptions([]); return; }
     setModelsLoading(true);
-    axiosClient
-      .get(VEHICLE_ENDPOINTS.MODELS, { params: { brand: vehicleBrand } })
-      .then((r) =>
-        setModelOptions(
-          (r.data?.data?.models ?? []).map((m) => ({ value: m, label: m })),
-        ),
-      )
+    axiosClient.get(VEHICLE_ENDPOINTS.MODELS, { params: { brand: vehicleBrand } })
+      .then((r) => setModelOptions((r.data?.data?.models ?? []).map((m) => ({ value: m, label: m }))))
       .catch(() => setModelOptions([]))
       .finally(() => setModelsLoading(false));
   }, [vehicleBrand]);
@@ -295,6 +330,11 @@ export default function AddCustomerScreen() {
       if (!vehicleBrand)              e.vehicleBrand      = "Brand is required";
       if (!vehicleModel)              e.vehicleModel      = "Model is required";
       if (!vehicleRegisterNo.trim())  e.vehicleRegisterNo = "Registration number is required";
+      if (vehicleKmDriven !== "" && vehicleKmDriven != null) {
+        const km = Number(vehicleKmDriven);
+        if (!Number.isFinite(km) || km < 0 || !Number.isInteger(km))
+          e.vehicleKmDriven = "Enter a valid non-negative number";
+      }
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -310,12 +350,14 @@ export default function AddCustomerScreen() {
         role:     "customer",
         ...(email.trim()   && { emailId: email.trim() }),
         ...(address.trim() && { address: address.trim() }),
-        // Vehicle fields — only sent when owner opts in
         ...(includeVehicle && {
           vehicleBrand,
           vehicleModel,
           vehicleRegisterNo: vehicleRegisterNo.trim().toUpperCase(),
           ...(vehicleVariant.trim() && { vehicleVariant: vehicleVariant.trim() }),
+          ...(vehicleKmDriven !== "" && vehicleKmDriven != null && {
+            vehicleKmDriven: Number(vehicleKmDriven),
+          }),
         }),
       });
       Alert.alert(
@@ -332,26 +374,71 @@ export default function AddCustomerScreen() {
     }
   };
 
+  // Live preview avatar
+  const previewInitials = useMemo(() => getInitials(fullName) || "?", [fullName]);
+
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <TopNav title="Add Customer" transparent={false} />
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: tabBarHeight + 80 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: tabBarHeight + 100 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* Live Hero Preview */}
+        <LinearGradient
+          colors={COLORS.gradPrimary}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <View style={styles.heroAvatar}>
+            <Text style={styles.heroAvatarText}>{previewInitials}</Text>
+          </View>
+          <View style={styles.heroInfo}>
+            <Text style={styles.heroName} numberOfLines={1}>
+              {fullName || "New Customer"}
+            </Text>
+            <View style={styles.heroMetaRow}>
+              <Ionicons name="call-outline" size={12} color="rgba(255, 255, 255, 0.85)" />
+              <Text style={styles.heroMetaText}>
+                {phoneNo ? `+91 ${phoneNo}` : "Phone number pending"}
+              </Text>
+            </View>
+            {includeVehicle && (vehicleBrand || vehicleRegisterNo) && (
+              <View style={styles.heroMetaRow}>
+                <Ionicons name="car-outline" size={12} color="rgba(255, 255, 255, 0.85)" />
+                <Text style={styles.heroMetaText} numberOfLines={1}>
+                  {[vehicleBrand, vehicleModel, vehicleRegisterNo?.toUpperCase()]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </Text>
+              </View>
+            )}
+          </View>
+        </LinearGradient>
+
+        {/* Stepper */}
+        <StepIndicator
+          name={fullName.trim()}
+          phone={phoneNo.trim()}
+          vehicle={includeVehicle && vehicleBrand && vehicleModel && vehicleRegisterNo.trim()}
+        />
+
+        {/* Personal Details */}
         <SectionCard
           title="Personal Details"
+          subtitle="Basic customer information"
           icon="person-outline"
           rightElement={
             <TouchableOpacity
               style={styles.contactsBtn}
               onPress={() => setShowContacts(true)}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
-              <Ionicons name="people-outline" size={14} color={COLORS.primary} />
-              <Text style={styles.contactsBtnText}>From Contacts</Text>
+              <Ionicons name="people-outline" size={13} color={COLORS.primary} />
+              <Text style={styles.contactsBtnText}>Import</Text>
             </TouchableOpacity>
           }
         >
@@ -400,47 +487,42 @@ export default function AddCustomerScreen() {
           />
         </SectionCard>
 
-        {/* ── Vehicle Section ── */}
+        {/* Vehicle Details */}
         <SectionCard
           title="Vehicle Details"
+          subtitle={includeVehicle ? "Required when adding a vehicle" : "Optional"}
           icon="car-outline"
+          accent={includeVehicle ? COLORS.primary : COLORS.textMuted}
           rightElement={
             <TouchableOpacity
-              style={[
-                styles.toggleBtn,
-                includeVehicle && styles.toggleBtnActive,
-              ]}
+              style={[styles.toggleSwitch, includeVehicle && styles.toggleSwitchActive]}
               onPress={() => {
-                setIncludeVehicle((v) => !v);
-                // Reset vehicle fields when toggling off
-                if (includeVehicle) {
+                const next = !includeVehicle;
+                setIncludeVehicle(next);
+                if (!next) {
                   setVehicleBrand(null);
                   setVehicleModel(null);
                   setVehicleRegisterNo("");
                   setVehicleVariant("");
+                  setVehicleKmDriven("");
                   setErrors((e) => ({
                     ...e,
                     vehicleBrand: null,
                     vehicleModel: null,
                     vehicleRegisterNo: null,
+                    vehicleKmDriven: null,
                   }));
                 }
               }}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
-              <Ionicons
-                name={includeVehicle ? "checkmark-circle" : "add-circle-outline"}
-                size={14}
-                color={includeVehicle ? COLORS.white : COLORS.primary}
-              />
-              <Text
-                style={[
-                  styles.toggleBtnText,
-                  includeVehicle && styles.toggleBtnTextActive,
-                ]}
-              >
-                {includeVehicle ? "Added" : "Add Vehicle"}
-              </Text>
+              <View style={[styles.toggleThumb, includeVehicle && styles.toggleThumbActive]}>
+                <Ionicons
+                  name={includeVehicle ? "checkmark" : "close"}
+                  size={11}
+                  color={includeVehicle ? COLORS.primary : COLORS.textMuted}
+                />
+              </View>
             </TouchableOpacity>
           }
         >
@@ -468,7 +550,7 @@ export default function AddCustomerScreen() {
                     icon="git-branch-outline"
                     placeholder={
                       !vehicleBrand
-                        ? "Select brand first"
+                        ? "Brand first"
                         : modelsLoading
                           ? "Loading…"
                           : "Select model"
@@ -498,44 +580,77 @@ export default function AddCustomerScreen() {
                 error={errors.vehicleRegisterNo}
               />
 
-              <AppInput
-                label="Variant / Trim"
-                icon="layers-outline"
-                placeholder="e.g. Disc, CBS, V3 (optional)"
-                value={vehicleVariant}
-                onChangeText={setVehicleVariant}
-              />
+              <View style={styles.rowFields}>
+                <View style={styles.rowField}>
+                  <AppInput
+                    label="Variant / Trim"
+                    icon="layers-outline"
+                    placeholder="e.g. Disc, CBS (optional)"
+                    value={vehicleVariant}
+                    onChangeText={setVehicleVariant}
+                  />
+                </View>
+                <View style={styles.rowField}>
+                  <AppInput
+                    label="Km Driven"
+                    icon="speedometer-outline"
+                    placeholder="e.g. 12500"
+                    value={vehicleKmDriven}
+                    onChangeText={(v) => {
+                      setVehicleKmDriven(v.replace(/[^0-9]/g, ""));
+                      setErrors((e) => ({ ...e, vehicleKmDriven: null }));
+                    }}
+                    keyboardType="numeric"
+                    maxLength={7}
+                    error={errors.vehicleKmDriven}
+                  />
+                </View>
+              </View>
             </>
           ) : (
             <View style={styles.vehicleEmptyHint}>
-              <Ionicons name="car-outline" size={22} color={COLORS.textMuted} />
+              <View style={styles.vehicleEmptyIcon}>
+                <Ionicons name="car-outline" size={22} color={COLORS.textMuted} />
+              </View>
+              <Text style={styles.vehicleEmptyTitle}>No vehicle linked</Text>
               <Text style={styles.vehicleEmptyText}>
-                Tap "Add Vehicle" to include a vehicle with this customer.
+                Toggle on to register a vehicle alongside this customer
               </Text>
             </View>
           )}
         </SectionCard>
 
+        {/* Tip Note */}
         <View style={styles.noteCard}>
-          <Ionicons name="information-circle-outline" size={16} color={COLORS.primary} />
+          <View style={styles.noteIcon}>
+            <Ionicons name="bulb-outline" size={14} color={COLORS.primary} />
+          </View>
           <Text style={styles.noteText}>
-            Tap "From Contacts" to auto-fill name and number from your phone.
+            <Text style={styles.noteBold}>Pro tip: </Text>
+            Tap "Import" to auto-fill name and number from your phone contacts.
           </Text>
         </View>
       </ScrollView>
 
       {/* Footer */}
       <View style={[styles.footer, { bottom: tabBarHeight }]}>
-        <AppButton
-          title="Create Customer"
-          variant="gradient"
-          size="lg"
-          onPress={handleCreate}
-          loading={loading}
-        />
+        <View style={styles.footerInfo}>
+          <Text style={styles.footerLabel}>Ready to save</Text>
+          <Text style={styles.footerSub}>
+            {includeVehicle ? "Customer + Vehicle" : "Customer only"}
+          </Text>
+        </View>
+        <View style={styles.footerBtnWrap}>
+          <AppButton
+            title="Create Customer"
+            variant="gradient"
+            size="lg"
+            onPress={handleCreate}
+            loading={loading}
+          />
+        </View>
       </View>
 
-      {/* Contacts Modal */}
       <ContactsModal
         visible={showContacts}
         onClose={() => setShowContacts(false)}
@@ -546,10 +661,29 @@ export default function AddCustomerScreen() {
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: COLORS.bg },
   scroll: { padding: SIZES.screenPadding, gap: SIZES.md },
+
+  // Hero
+  hero:           { flexDirection: "row", alignItems: "center", gap: SIZES.md, padding: SIZES.md, borderRadius: SIZES.radiusLg, ...SHADOWS.md },
+  heroAvatar:     { width: 56, height: 56, borderRadius: SIZES.radiusFull, backgroundColor: "rgba(255, 255, 255, 0.2)", borderWidth: 2, borderColor: "rgba(255, 255, 255, 0.4)", alignItems: "center", justifyContent: "center" },
+  heroAvatarText: { fontFamily: FONTS.bold, fontSize: SIZES.textLg, color: COLORS.white, letterSpacing: -0.3 },
+  heroInfo:       { flex: 1, gap: 4 },
+  heroName:       { fontFamily: FONTS.bold, fontSize: SIZES.textMd, color: COLORS.white, letterSpacing: -0.3 },
+  heroMetaRow:    { flexDirection: "row", alignItems: "center", gap: 5 },
+  heroMetaText:   { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: "rgba(255, 255, 255, 0.9)", flex: 1 },
+
+  // Stepper
+  stepperWrap:     { flexDirection: "row", alignItems: "center", gap: SIZES.sm, paddingVertical: SIZES.xs, paddingHorizontal: SIZES.sm, justifyContent: "center" },
+  stepNode:        { alignItems: "center", gap: 4 },
+  stepCircle:      { width: 26, height: 26, borderRadius: SIZES.radiusFull, backgroundColor: COLORS.bgCard, borderWidth: 1.5, borderColor: COLORS.borderLight, alignItems: "center", justifyContent: "center" },
+  stepCircleDone:  { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  stepNumber:      { fontFamily: FONTS.bold, fontSize: 11, color: COLORS.textMuted },
+  stepLabel:       { fontFamily: FONTS.semibold, fontSize: 10, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: "uppercase" },
+  stepLabelDone:   { color: COLORS.primary },
+  stepLine:        { flex: 1, height: 2, backgroundColor: COLORS.borderLight, borderRadius: 1, marginBottom: 14, maxWidth: 60 },
+  stepLineActive:  { backgroundColor: COLORS.primary },
 
   // Section Card
   sectionCard: {
@@ -565,23 +699,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: SIZES.md,
-    paddingVertical: SIZES.sm + 2,
+    paddingVertical: SIZES.sm + 4,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
-    backgroundColor: COLORS.bg,
+    backgroundColor: COLORS.bgCard,
   },
-  sectionLeft:    { flexDirection: "row", alignItems: "center", gap: SIZES.sm },
-  sectionIconWrap: {
-    width: 28, height: 28, borderRadius: SIZES.radiusSm,
-    backgroundColor: COLORS.primaryLight,
-    alignItems: "center", justifyContent: "center",
-  },
-  sectionTitle: {
-    fontFamily: FONTS.semibold, fontSize: SIZES.textBase, color: COLORS.textPrimary,
-  },
-  sectionBody: { padding: SIZES.md, paddingBottom: SIZES.sm },
+  sectionLeft:     { flexDirection: "row", alignItems: "center", gap: SIZES.sm + 2, flex: 1 },
+  sectionIconWrap: { width: 32, height: 32, borderRadius: SIZES.radiusSm, alignItems: "center", justifyContent: "center" },
+  sectionTitle:    { fontFamily: FONTS.semibold, fontSize: SIZES.textBase, color: COLORS.textPrimary, letterSpacing: -0.2 },
+  sectionSubtitle: { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted, marginTop: 1 },
+  sectionBody:     { padding: SIZES.md, gap: SIZES.sm + 4 },
 
-  // "From Contacts" button
+  // Import contacts button
   contactsBtn: {
     flexDirection: "row", alignItems: "center", gap: 5,
     borderWidth: 1, borderColor: COLORS.primary,
@@ -590,131 +719,96 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryLight,
   },
   contactsBtnText: {
-    fontFamily: FONTS.medium, fontSize: SIZES.textXs, color: COLORS.primary,
+    fontFamily: FONTS.semibold, fontSize: SIZES.textXs, color: COLORS.primary, letterSpacing: 0.2,
   },
 
-  // Info note
+  // Toggle Switch (vehicle on/off)
+  toggleSwitch:       { width: 44, height: 26, borderRadius: 13, backgroundColor: COLORS.bgSection, padding: 2, justifyContent: "center" },
+  toggleSwitchActive: { backgroundColor: COLORS.primary },
+  toggleThumb:        { width: 22, height: 22, borderRadius: 11, backgroundColor: COLORS.white, alignItems: "center", justifyContent: "center", ...SHADOWS.sm },
+  toggleThumbActive:  { transform: [{ translateX: 18 }] },
+
+  // Note card
   noteCard: {
     flexDirection: "row", alignItems: "flex-start", gap: SIZES.sm,
     backgroundColor: COLORS.primaryLight,
     borderRadius: SIZES.radiusMd, borderWidth: 1,
-    borderColor: COLORS.primary + "30", padding: SIZES.md,
+    borderColor: COLORS.primary + "30", padding: SIZES.sm + 4,
   },
+  noteIcon: { width: 24, height: 24, borderRadius: SIZES.radiusFull, backgroundColor: COLORS.bgCard, alignItems: "center", justifyContent: "center", ...SHADOWS.sm },
   noteText: {
     flex: 1, fontFamily: FONTS.regular, fontSize: SIZES.textSm,
     color: COLORS.primary, lineHeight: 20,
   },
+  noteBold: { fontFamily: FONTS.semibold },
 
-  // Vehicle section
-  rowFields:       { flexDirection: "row", gap: SIZES.sm },
-  rowField:        { flex: 1 },
-  vehicleEmptyHint: {
-    flexDirection: "row", alignItems: "center", gap: SIZES.sm,
-    paddingVertical: SIZES.sm,
-  },
-  vehicleEmptyText: {
-    flex: 1,
-    fontFamily: FONTS.regular, fontSize: SIZES.textSm,
-    color: COLORS.textMuted, lineHeight: 20,
-  },
-
-  // Toggle button (Add Vehicle / Added)
-  toggleBtn: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    borderWidth: 1, borderColor: COLORS.primary,
-    borderRadius: SIZES.radiusFull,
-    paddingHorizontal: SIZES.sm + 2, paddingVertical: 5,
-    backgroundColor: COLORS.primaryLight,
-  },
-  toggleBtnActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  toggleBtnText: {
-    fontFamily: FONTS.medium, fontSize: SIZES.textXs, color: COLORS.primary,
-  },
-  toggleBtnTextActive: {
-    color: COLORS.white,
-  },
+  // Vehicle empty
+  rowFields:         { flexDirection: "row", gap: SIZES.sm },
+  rowField:          { flex: 1 },
+  vehicleEmptyHint:  { alignItems: "center", paddingVertical: SIZES.lg, gap: 6 },
+  vehicleEmptyIcon:  { width: 48, height: 48, borderRadius: SIZES.radiusFull, backgroundColor: COLORS.bgSection, alignItems: "center", justifyContent: "center", marginBottom: 4 },
+  vehicleEmptyTitle: { fontFamily: FONTS.semibold, fontSize: SIZES.textSm, color: COLORS.textPrimary },
+  vehicleEmptyText:  { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted, textAlign: "center", paddingHorizontal: SIZES.md, lineHeight: 18 },
 
   // Footer
   footer: {
     position: "absolute", bottom: 0, left: 0, right: 0,
+    flexDirection: "row", alignItems: "center", gap: SIZES.md,
     paddingHorizontal: SIZES.screenPadding,
-    paddingVertical: SIZES.md,
+    paddingVertical: SIZES.sm + 4,
     backgroundColor: COLORS.bgCard,
     borderTopWidth: 1, borderTopColor: COLORS.borderLight,
-    ...SHADOWS.md,
+    ...SHADOWS.lg,
   },
+  footerInfo:    { gap: 2 },
+  footerLabel:   { fontFamily: FONTS.semibold, fontSize: SIZES.textXs, color: COLORS.textPrimary, letterSpacing: 0.2 },
+  footerSub:     { fontFamily: FONTS.regular, fontSize: 10, color: COLORS.textMuted, letterSpacing: 0.3, textTransform: "uppercase" },
+  footerBtnWrap: { flex: 1 },
 
-  // ── Modal ──────────────────────────────────────────────────────
-  modalSafe:   { flex: 1, backgroundColor: COLORS.bg },
+  // ── Modal ──────────────────────────────────────────────────────────────────
+  modalSafe:    { flex: 1, backgroundColor: COLORS.bg },
   modalHeader: {
-    flexDirection: "row", alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: SIZES.screenPadding,
-    paddingVertical: SIZES.md,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: SIZES.screenPadding, paddingVertical: SIZES.md,
     borderBottomWidth: 1, borderBottomColor: COLORS.borderLight,
     backgroundColor: COLORS.bgCard,
   },
-  modalTitle: {
-    fontFamily: FONTS.bold, fontSize: SIZES.textLg, color: COLORS.textPrimary,
-  },
+  modalTitle:    { fontFamily: FONTS.semibold, fontSize: SIZES.textMd, color: COLORS.textPrimary, letterSpacing: -0.2 },
+  modalSubtitle: { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted, marginTop: 2 },
+  modalClose:    { width: 32, height: 32, alignItems: "center", justifyContent: "center", borderRadius: SIZES.radiusFull, backgroundColor: COLORS.bgSection },
 
-  // Search bar
-  searchWrap: {
-    flexDirection: "row", alignItems: "center",
-    margin: SIZES.screenPadding,
-    backgroundColor: COLORS.bgCard,
-    borderRadius: SIZES.radiusMd, borderWidth: 1,
-    borderColor: COLORS.borderLight, paddingHorizontal: SIZES.sm,
-    ...SHADOWS.sm,
-  },
-  searchIcon:  { marginRight: SIZES.xs },
-  searchInput: {
-    flex: 1, height: 42,
-    fontFamily: FONTS.regular, fontSize: SIZES.textSm,
-    color: COLORS.textPrimary,
-  },
+  // Modal search
+  modalSearchWrap:    { paddingHorizontal: SIZES.screenPadding, paddingVertical: SIZES.md, backgroundColor: COLORS.bgCard, borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
+  modalSearch:        { flexDirection: "row", alignItems: "center", gap: SIZES.sm, backgroundColor: COLORS.bg, borderRadius: SIZES.radiusMd, borderWidth: 1, borderColor: COLORS.borderLight, paddingHorizontal: SIZES.md, height: 44 },
+  modalSearchFocused: { borderColor: COLORS.primary, backgroundColor: COLORS.bgCard, ...SHADOWS.sm },
+  modalSearchInput:   { flex: 1, fontFamily: FONTS.regular, fontSize: SIZES.textSm, color: COLORS.textPrimary, paddingVertical: 0 },
 
   // Contact row
   contactRow: {
     flexDirection: "row", alignItems: "center",
-    paddingHorizontal: SIZES.screenPadding, paddingVertical: SIZES.sm + 2,
-    gap: SIZES.sm, backgroundColor: COLORS.bgCard,
+    paddingHorizontal: SIZES.screenPadding, paddingVertical: SIZES.sm + 4,
+    gap: SIZES.sm + 4, backgroundColor: COLORS.bgCard,
   },
   contactAvatar: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: COLORS.primaryLight, borderWidth: 1,
-    borderColor: COLORS.primary + "30",
+    width: 44, height: 44, borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.primaryLight,
+    borderWidth: 1.5, borderColor: COLORS.primary + "30",
     alignItems: "center", justifyContent: "center",
   },
-  contactInitials: {
-    fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: COLORS.primary,
-  },
-  contactInfo:  { flex: 1 },
-  contactName:  {
-    fontFamily: FONTS.semibold, fontSize: SIZES.textBase, color: COLORS.textPrimary,
-  },
-  contactPhone: {
-    fontFamily: FONTS.regular, fontSize: SIZES.textSm, color: COLORS.textMuted, marginTop: 1,
-  },
-  noPhoneBadge: {
-    fontFamily: FONTS.medium, fontSize: SIZES.textXs,
-    color: COLORS.error, backgroundColor: COLORS.errorLight,
-    borderRadius: SIZES.radiusFull, paddingHorizontal: 8, paddingVertical: 3,
-  },
-  separator: { height: 1, backgroundColor: COLORS.borderLight, marginLeft: SIZES.screenPadding + 42 + SIZES.sm },
+  contactInitials:  { fontFamily: FONTS.bold, fontSize: SIZES.textBase, color: COLORS.primaryDark },
+  contactInfo:      { flex: 1, gap: 2 },
+  contactName:      { fontFamily: FONTS.semibold, fontSize: SIZES.textBase, color: COLORS.textPrimary, letterSpacing: -0.1 },
+  contactPhoneRow:  { flexDirection: "row", alignItems: "center", gap: 4 },
+  contactPhone:     { fontFamily: FONTS.regular, fontSize: SIZES.textXs, color: COLORS.textMuted },
+  contactArrow:     { width: 28, height: 28, borderRadius: SIZES.radiusFull, backgroundColor: COLORS.bgSection, alignItems: "center", justifyContent: "center" },
+  noPhoneBadge:     { backgroundColor: COLORS.errorLight, borderRadius: SIZES.radiusFull, paddingHorizontal: 8, paddingVertical: 3 },
+  noPhoneBadgeText: { fontFamily: FONTS.semibold, fontSize: 10, color: COLORS.error, letterSpacing: 0.3 },
+  contactSeparator: { height: 1, backgroundColor: COLORS.borderLight, marginLeft: SIZES.screenPadding + 44 + SIZES.sm + 4 },
 
   // Empty / loading states
-  modalCenter: {
-    flex: 1, alignItems: "center", justifyContent: "center", gap: SIZES.md, paddingHorizontal: SIZES.xl,
-  },
-  loadingText: {
-    fontFamily: FONTS.regular, fontSize: SIZES.textSm, color: COLORS.textMuted,
-  },
-  emptyText: {
-    fontFamily: FONTS.regular, fontSize: SIZES.textBase,
-    color: COLORS.textMuted, textAlign: "center", lineHeight: 22,
-  },
+  modalCenter:     { flex: 1, alignItems: "center", justifyContent: "center", gap: SIZES.xs, paddingHorizontal: SIZES.xl },
+  emptyIconCircle: { width: 72, height: 72, borderRadius: SIZES.radiusFull, backgroundColor: COLORS.bgSection, alignItems: "center", justifyContent: "center", marginBottom: SIZES.sm },
+  emptyTitle:      { fontFamily: FONTS.semibold, fontSize: SIZES.textMd, color: COLORS.textPrimary, letterSpacing: -0.2 },
+  emptyText:       { fontFamily: FONTS.regular, fontSize: SIZES.textSm, color: COLORS.textMuted, textAlign: "center", lineHeight: 20 },
+  loadingText:     { fontFamily: FONTS.regular, fontSize: SIZES.textSm, color: COLORS.textMuted },
 });

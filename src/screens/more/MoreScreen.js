@@ -46,6 +46,12 @@ const MENU_GROUPS = [
         onPress: (nav) => nav.navigate("VehicleSearch"),
       },
       {
+        id: "inventory_transfers",
+        label: "Inventory Transfers",
+        icon: "swap-horizontal-outline",
+        onPress: (nav) => nav.navigate("InventoryTransfers"),
+      },
+      {
         id: "tags_management",
         label: "Tag Management",
         icon: "pricetag-outline",

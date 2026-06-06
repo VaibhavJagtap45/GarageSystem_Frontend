@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { View, Text } from "react-native";
+import { AppState, View, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -21,8 +21,14 @@ import AppNavigator from "./src/navigation/AppNavigator";
 import { COLORS } from "./src/utils/constants";
 import { PreferencesProvider } from "./src/context/PreferencesContext";
 import {
+  hasSessionExpired,
+  getMsUntilSessionExpiry,
+} from "./src/utils/authSession";
+import { endSession } from "./src/utils/session";
+import {
   initPushNotifications,
   addNotificationListeners,
+  canUseRemotePushNotifications,
 } from "./src/utils/notifications";
 
 // ─── Toast Styles ─────────────────────────────────────────────────────────────
@@ -41,13 +47,30 @@ const toastCardStyle = {
 const toastConfig = {
   success: ({ text1, text2 }) => (
     <View
-      style={{ ...toastCardStyle, borderLeftWidth: 4, borderLeftColor: COLORS.success }}
+      style={{
+        ...toastCardStyle,
+        borderLeftWidth: 4,
+        borderLeftColor: COLORS.success,
+      }}
     >
-      <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: COLORS.textPrimary }}>
+      <Text
+        style={{
+          fontSize: 14,
+          fontFamily: "Inter_600SemiBold",
+          color: COLORS.textPrimary,
+        }}
+      >
         {text1}
       </Text>
       {text2 ? (
-        <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 2, fontFamily: "Inter_400Regular" }}>
+        <Text
+          style={{
+            fontSize: 12,
+            color: COLORS.textSecondary,
+            marginTop: 2,
+            fontFamily: "Inter_400Regular",
+          }}
+        >
           {text2}
         </Text>
       ) : null}
@@ -55,13 +78,30 @@ const toastConfig = {
   ),
   error: ({ text1, text2 }) => (
     <View
-      style={{ ...toastCardStyle, borderLeftWidth: 4, borderLeftColor: COLORS.error }}
+      style={{
+        ...toastCardStyle,
+        borderLeftWidth: 4,
+        borderLeftColor: COLORS.error,
+      }}
     >
-      <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: COLORS.textPrimary }}>
+      <Text
+        style={{
+          fontSize: 14,
+          fontFamily: "Inter_600SemiBold",
+          color: COLORS.textPrimary,
+        }}
+      >
         {text1}
       </Text>
       {text2 ? (
-        <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 2, fontFamily: "Inter_400Regular" }}>
+        <Text
+          style={{
+            fontSize: 12,
+            color: COLORS.textSecondary,
+            marginTop: 2,
+            fontFamily: "Inter_400Regular",
+          }}
+        >
           {text2}
         </Text>
       ) : null}
@@ -69,13 +109,30 @@ const toastConfig = {
   ),
   info: ({ text1, text2 }) => (
     <View
-      style={{ ...toastCardStyle, borderLeftWidth: 4, borderLeftColor: COLORS.primary }}
+      style={{
+        ...toastCardStyle,
+        borderLeftWidth: 4,
+        borderLeftColor: COLORS.primary,
+      }}
     >
-      <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: COLORS.textPrimary }}>
+      <Text
+        style={{
+          fontSize: 14,
+          fontFamily: "Inter_600SemiBold",
+          color: COLORS.textPrimary,
+        }}
+      >
         {text1}
       </Text>
       {text2 ? (
-        <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 2, fontFamily: "Inter_400Regular" }}>
+        <Text
+          style={{
+            fontSize: 12,
+            color: COLORS.textSecondary,
+            marginTop: 2,
+            fontFamily: "Inter_400Regular",
+          }}
+        >
           {text2}
         </Text>
       ) : null}
@@ -88,21 +145,79 @@ SplashScreen.preventAutoHideAsync();
 // ─── Inner App ─────────────────────────────────────────────────────────────────
 // Must live inside <Provider> to use Redux hooks.
 function AppContent() {
-  const dispatch        = useDispatch();
+  const dispatch = useDispatch();
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const accessTokenExpiresAt = useSelector(
+    (state) => state.auth.accessTokenExpiresAt,
+  );
   const tokenRegistered = useRef(false); // guard: only register once per session
+  const sessionTimerRef = useRef(null);
 
   // Restore persisted session from AsyncStorage on boot
   useEffect(() => {
     dispatch(restoreSession());
   }, [dispatch]);
 
+  useEffect(() => {
+    if (sessionTimerRef.current) {
+      clearTimeout(sessionTimerRef.current);
+      sessionTimerRef.current = null;
+    }
+
+    if (!isAuthenticated || !accessTokenExpiresAt) {
+      return undefined;
+    }
+
+    if (hasSessionExpired(accessTokenExpiresAt)) {
+      void endSession();
+      return undefined;
+    }
+
+    sessionTimerRef.current = setTimeout(() => {
+      void endSession();
+    }, getMsUntilSessionExpiry(accessTokenExpiresAt));
+
+    return () => {
+      if (sessionTimerRef.current) {
+        clearTimeout(sessionTimerRef.current);
+        sessionTimerRef.current = null;
+      }
+    };
+  }, [isAuthenticated, accessTokenExpiresAt]);
+
+  useEffect(() => {
+    const appStateListener = AppState.addEventListener("change", (nextState) => {
+      if (
+        nextState === "active" &&
+        isAuthenticated &&
+        accessTokenExpiresAt &&
+        hasSessionExpired(accessTokenExpiresAt)
+      ) {
+        void endSession();
+      }
+    });
+
+    return () => appStateListener.remove();
+  }, [isAuthenticated, accessTokenExpiresAt]);
+
   // Register for push notifications once the user is authenticated.
   // The ref guard prevents re-registering on every re-render.
   useEffect(() => {
     if (isAuthenticated && !tokenRegistered.current) {
       tokenRegistered.current = true;
-      initPushNotifications();
+      if (canUseRemotePushNotifications) {
+        void initPushNotifications().catch((error) => {
+          console.warn(
+            "[Push] Failed to initialize push notifications:",
+            error,
+          );
+        });
+      } else {
+        console.info(
+          "[Push] Skipping remote push registration in Expo Go on Android. " +
+            "Use a development build to test push notifications.",
+        );
+      }
     }
     // Reset guard on logout so the next login re-registers
     if (!isAuthenticated) {
@@ -153,7 +268,9 @@ export default function App() {
   return (
     <Provider store={store}>
       <PreferencesProvider>
-        <GestureHandlerRootView style={{ flex: 1, backgroundColor: COLORS.bg }}>
+        <GestureHandlerRootView
+          style={{ flex: 1, backgroundColor: COLORS.bg }}
+        >
           <SafeAreaProvider>
             <StatusBar style="dark" backgroundColor={COLORS.bg} />
             <AppContent />
