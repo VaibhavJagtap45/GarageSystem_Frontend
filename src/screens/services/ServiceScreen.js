@@ -22,6 +22,7 @@ import {
   SHADOWS,
   REPAIR_ORDER_ENDPOINTS,
   INVOICE_ENDPOINTS,
+  SERVICE_REMINDER_ENDPOINTS,
 } from "../../utils/constants";
 import Badge from "../../components/ui/Badge";
 import axiosClient from "../../api/axios";
@@ -297,7 +298,15 @@ function StatCard({ card, navigation, fs, index }) {
   );
 }
 
-const INITIAL_STATS = { open: 0, wip: 0, ready: 0, due: 0, dueAmount: 0 };
+const INITIAL_STATS = {
+  open: 0,
+  wip: 0,
+  ready: 0,
+  due: 0,
+  dueAmount: 0,
+  remindersDue: 0,
+  remindersOverdue: 0,
+};
 
 export default function ServiceScreen() {
   const navigation = useNavigation();
@@ -338,7 +347,7 @@ export default function ServiceScreen() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const [createdRes, wipRes, readyRes, dueRes, invoiceStatsRes] =
+      const [createdRes, wipRes, readyRes, dueRes, invoiceStatsRes, remindersRes] =
         await Promise.allSettled([
           axiosClient.get(REPAIR_ORDER_ENDPOINTS.LIST, {
             params: { status: "created", limit: 1 },
@@ -353,7 +362,16 @@ export default function ServiceScreen() {
             params: { paymentStatus: "unpaid", limit: 1 },
           }),
           axiosClient.get(INVOICE_ENDPOINTS.STATS),
+          // One call returns all reminder counts (due / overdue / done).
+          axiosClient.get(SERVICE_REMINDER_ENDPOINTS.LIST, {
+            params: { tab: "due", limit: 1 },
+          }),
         ]);
+
+      const reminderCounts =
+        remindersRes.status === "fulfilled"
+          ? (remindersRes.value.data?.data?.counts ?? {})
+          : {};
 
       setStats({
         open:
@@ -376,6 +394,8 @@ export default function ServiceScreen() {
           invoiceStatsRes.status === "fulfilled"
             ? (invoiceStatsRes.value.data?.data?.credit ?? 0)
             : 0,
+        remindersDue: reminderCounts.due ?? 0,
+        remindersOverdue: reminderCounts.overdue ?? 0,
       });
     } catch {
       // silently degrade
@@ -398,6 +418,15 @@ export default function ServiceScreen() {
       helper: `₹${Number(stats.dueAmount).toLocaleString("en-IN")} pending`,
     },
   ];
+
+  // Service reminders summary for the "Next Service Reminders" row.
+  const remindersTotal = stats.remindersOverdue + stats.remindersDue;
+  const remindersUrgent = stats.remindersOverdue > 0;
+  const remindersSubtitle = remindersUrgent
+    ? `${stats.remindersOverdue} overdue · tap to remind customers`
+    : remindersTotal > 0
+      ? `${stats.remindersDue} upcoming — notify on WhatsApp`
+      : "No customers due — all caught up";
 
   return (
     <SafeAreaView style={s.safe} edges={["top"]}>
@@ -515,6 +544,80 @@ export default function ServiceScreen() {
               index={i}
             />
           ))}
+        </View>
+
+        {/* ── Next Service Reminders ───────────────────────────── */}
+        <SectionHeader
+          title="Next Service Reminders"
+          actionLabel="See all"
+          onAction={() => navigation.navigate("ServiceReminders")}
+          fs={fs}
+        />
+        <View style={s.section}>
+          <TouchableOpacity
+            style={s.completedRow}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate("ServiceReminders")}
+            accessibilityRole="button"
+            accessibilityLabel="Service Reminders"
+          >
+            <LinearGradient
+              colors={
+                remindersUrgent ? ["#E24B4A", "#BA2D2C"] : ["#BA7517", "#D9940A"]
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.actionIconGrad}
+            >
+              <MaterialCommunityIcons
+                name="bell-ring-outline"
+                size={22}
+                color={COLORS.white}
+              />
+            </LinearGradient>
+            <View style={s.actionContent}>
+              <Text style={[s.actionTitle, { fontSize: fs.textBase }]}>
+                Service Reminders
+              </Text>
+              <Text
+                style={[s.actionSub, { fontSize: fs.textSm }]}
+                numberOfLines={1}
+              >
+                {remindersSubtitle}
+              </Text>
+            </View>
+            {remindersTotal > 0 ? (
+              <View
+                style={[
+                  s.reminderCountPill,
+                  {
+                    backgroundColor: remindersUrgent
+                      ? COLORS.errorLight
+                      : COLORS.primaryLight,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    s.reminderCountText,
+                    { color: remindersUrgent ? COLORS.error : COLORS.primary },
+                  ]}
+                >
+                  {remindersTotal}
+                </Text>
+              </View>
+            ) : (
+              <View
+                style={[s.actionArrow, { backgroundColor: COLORS.primaryLight }]}
+              >
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={COLORS.primary}
+                />
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
         <View style={s.section}>
@@ -739,6 +842,19 @@ const s = StyleSheet.create({
     borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
+  },
+  reminderCountPill: {
+    minWidth: 30,
+    height: 30,
+    paddingHorizontal: SIZES.sm,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reminderCountText: {
+    fontFamily: FONTS.extrabold,
+    fontSize: SIZES.textSm,
+    letterSpacing: -0.3,
   },
 
   // ── Completed row ──────────────────────────────────────────────

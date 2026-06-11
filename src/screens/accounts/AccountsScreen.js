@@ -29,6 +29,7 @@ import {
   STOCK_IN_ENDPOINTS,
   INVOICE_ENDPOINTS,
   PURCHASE_ORDER_ENDPOINTS,
+  PAYROLL_ENDPOINTS,
 } from "../../utils/constants";
 import TopNav from "../../components/ui/TopNav";
 import AppButton from "../../components/ui/AppButton";
@@ -108,6 +109,11 @@ function getDateRange(period) {
     };
   }
   return {};
+}
+
+function currentMonthParam() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function fmtINR(n) {
@@ -244,6 +250,194 @@ function SummaryCard({
             {fmt(credit)}
           </Text>
         </View>
+      </View>
+    </View>
+  );
+}
+
+// ─── Margin Card ──────────────────────────────────────────────────────────────
+//  Profitability on invoices: net revenue (ex-tax) − parts cost = margin.
+//  The full service price counts as margin (services carry no cost of goods).
+function MarginCard({ stats }) {
+  const {
+    netRevenue = 0,
+    partsCost = 0,
+    margin = 0,
+    marginPercent = 0,
+    invoiceCount = 0,
+  } = stats || {};
+
+  const base = Math.max(netRevenue, 1);
+  const costPct = Math.min(100, Math.max((partsCost / base) * 100, 0));
+  const marginPct = Math.min(100, Math.max((margin / base) * 100, 0));
+
+  return (
+    <View style={s.marginCard}>
+      <View style={s.marginHeader}>
+        <View style={s.marginHeaderLeft}>
+          <View style={s.marginIconWrap}>
+            <Ionicons name="analytics-outline" size={15} color={COLORS.primary} />
+          </View>
+          <View>
+            <Text style={s.marginEyebrow}>PROFIT MARGIN</Text>
+            <Text style={s.marginValue}>{fmt(margin)}</Text>
+          </View>
+        </View>
+        <View style={s.marginPctBadge}>
+          <Ionicons name="trending-up" size={11} color={COLORS.success} />
+          <Text style={s.marginPctText}>{marginPercent}%</Text>
+        </View>
+      </View>
+
+      {/* Cost vs. margin proportion bar */}
+      <View style={s.marginBar}>
+        <View style={[s.marginBarCost, { width: `${costPct}%` }]} />
+        <View style={[s.marginBarProfit, { width: `${marginPct}%` }]} />
+      </View>
+      <View style={s.marginLegendRow}>
+        <View style={s.marginLegendItem}>
+          <View style={[s.dot, { backgroundColor: COLORS.warning }]} />
+          <Text style={s.marginLegendText}>Parts cost</Text>
+        </View>
+        <View style={s.marginLegendItem}>
+          <View style={[s.dot, { backgroundColor: COLORS.success }]} />
+          <Text style={s.marginLegendText}>Margin</Text>
+        </View>
+      </View>
+
+      {/* Breakdown */}
+      <View style={s.marginBreakdown}>
+        <View style={s.marginRow}>
+          <Text style={s.marginRowLabel}>Net revenue (ex-tax)</Text>
+          <Text style={s.marginRowValue}>{fmt(netRevenue)}</Text>
+        </View>
+        <View style={s.marginRow}>
+          <Text style={s.marginRowLabel}>Parts cost (COGS)</Text>
+          <Text style={[s.marginRowValue, { color: COLORS.warning }]}>
+            − {fmt(partsCost)}
+          </Text>
+        </View>
+        <View style={s.marginRowDivider} />
+        <View style={s.marginRow}>
+          <Text style={s.marginRowTotalLabel}>Margin</Text>
+          <Text style={s.marginRowTotalValue}>{fmt(margin)}</Text>
+        </View>
+      </View>
+
+      <Text style={s.marginFootnote}>
+        From {invoiceCount} invoice{invoiceCount !== 1 ? "s" : ""} · tax excluded
+      </Text>
+    </View>
+  );
+}
+
+// ─── Salary (payroll) section ─────────────────────────────────────────────────
+//  Surfaces this month's mechanic payroll inside accounting: payable / paid /
+//  due, plus a per-mechanic "Pay" button that records the salary as an expense.
+//  Recording a payment refreshes the expense totals (a paid salary is an
+//  expense), so the accounting figures change accordingly.
+function SalaryMechanicRow({ mechanic, paying, onPay }) {
+  const paid = mechanic.salaryStatus === "paid";
+  const payable = Number(mechanic.totalPayable) || 0;
+  const canPay = payable > 0;
+  return (
+    <View style={s.salaryRow}>
+      <View style={s.salaryAvatar}>
+        <Text style={s.salaryAvatarText}>
+          {(mechanic.fullName || "?").charAt(0).toUpperCase()}
+        </Text>
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={s.salaryName} numberOfLines={1}>
+          {mechanic.fullName || "Mechanic"}
+        </Text>
+        <Text style={s.salaryRowSub} numberOfLines={1}>
+          {canPay ? fmt(payable) : "Salary not set"}
+          {mechanic.bonusEligible ? ` · +${mechanic.bonusPercent}% bonus` : ""}
+        </Text>
+      </View>
+      {paid ? (
+        <View style={s.salaryPaidPill}>
+          <Ionicons name="checkmark-circle" size={12} color={COLORS.success} />
+          <Text style={s.salaryPaidText}>Paid</Text>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={[s.salaryPayBtn, (paying || !canPay) && { opacity: 0.55 }]}
+          onPress={() => onPay(mechanic)}
+          disabled={paying || !canPay}
+          activeOpacity={0.85}
+        >
+          {paying ? (
+            <ActivityIndicator size="small" color={COLORS.white} />
+          ) : (
+            <>
+              <Ionicons name="add" size={13} color={COLORS.white} />
+              <Text style={s.salaryPayText}>Pay</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+function SalaryCard({ stats, mechanics, monthLabel, payingId, onPay, onView }) {
+  if (!stats.mechanicsCount) return null;
+  return (
+    <View style={s.salaryCard}>
+      <View style={s.salaryHeader}>
+        <View style={s.salaryHeaderLeft}>
+          <View style={s.salaryIcon}>
+            <Ionicons name="people-outline" size={15} color={COLORS.primary} />
+          </View>
+          <View>
+            <Text style={s.salaryEyebrow}>SALARIES · {monthLabel}</Text>
+            <Text style={s.salaryValue}>
+              {fmt(stats.payable)} <Text style={s.salaryValueSub}>payable</Text>
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={s.salaryViewBtn}
+          onPress={onView}
+          activeOpacity={0.8}
+        >
+          <Text style={s.salaryViewText}>Payroll</Text>
+          <Ionicons name="chevron-forward" size={13} color={COLORS.primary} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={s.salaryStatsRow}>
+        <View style={s.salaryStat}>
+          <Text style={[s.salaryStatValue, { color: COLORS.success }]}>
+            {fmt(stats.paid)}
+          </Text>
+          <Text style={s.salaryStatLabel}>
+            Paid{stats.paidCount ? ` · ${stats.paidCount}` : ""}
+          </Text>
+        </View>
+        <View style={s.salaryStatDivider} />
+        <View style={s.salaryStat}>
+          <Text style={[s.salaryStatValue, { color: COLORS.warning }]}>
+            {fmt(stats.pending)}
+          </Text>
+          <Text style={s.salaryStatLabel}>
+            Due{stats.pendingCount ? ` · ${stats.pendingCount}` : ""}
+          </Text>
+        </View>
+      </View>
+
+      {/* Per-mechanic rows with inline pay buttons */}
+      <View style={s.salaryList}>
+        {mechanics.map((m) => (
+          <SalaryMechanicRow
+            key={m.mechanicId}
+            mechanic={m}
+            paying={payingId === m.mechanicId}
+            onPay={onPay}
+          />
+        ))}
       </View>
     </View>
   );
@@ -747,6 +941,27 @@ export default function AccountsScreen() {
   const [expStats, setExpStats] = useState({ total: 0, paid: 0, credit: 0 });
   const [poStats, setPOStats] = useState({ total: 0, paid: 0, credit: 0 });
   const [incStats, setIncStats] = useState({ total: 0, paid: 0, credit: 0 });
+  const [marginStats, setMarginStats] = useState({
+    revenue: 0,
+    tax: 0,
+    netRevenue: 0,
+    partsCost: 0,
+    margin: 0,
+    marginPercent: 0,
+    invoiceCount: 0,
+  });
+
+  // Salary / payroll (current month)
+  const [salaryStats, setSalaryStats] = useState({
+    payable: 0,
+    paid: 0,
+    pending: 0,
+    paidCount: 0,
+    pendingCount: 0,
+    mechanicsCount: 0,
+  });
+  const [salaryMechanics, setSalaryMechanics] = useState([]);
+  const [payingSalaryId, setPayingSalaryId] = useState(null);
 
   // Lists
   const [expenses, setExpenses] = useState([]);
@@ -782,23 +997,48 @@ export default function AccountsScreen() {
     const range = getDateRange(period);
     const bp = branchParam ? { branch: branchParam } : {};
     try {
+      const now = new Date();
+      const payrollMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
       const [
         expStatsRes,
         poStatsRes,
         incStatsRes,
+        marginRes,
         expListRes,
         poListRes,
         incListRes,
+        payrollRes,
       ] = await Promise.allSettled([
         axiosClient.get(EXPENSE_ENDPOINTS.STATS, { params: { ...range, ...bp } }),
         axiosClient.get(STOCK_IN_ENDPOINTS.STATS, { params: { ...range, ...bp } }),
         axiosClient.get(INVOICE_ENDPOINTS.STATS, { params: { ...range, ...bp } }),
+        axiosClient.get(INVOICE_ENDPOINTS.MARGIN_REPORT, {
+          params: { ...range, ...bp },
+        }),
         axiosClient.get(EXPENSE_ENDPOINTS.LIST, {
           params: { ...range, ...bp, limit: 50 },
         }),
         axiosClient.get(STOCK_IN_ENDPOINTS.LIST, { params: { ...bp, limit: 50 } }),
         axiosClient.get(INVOICE_ENDPOINTS.LIST, { params: { ...bp, limit: 50 } }),
+        // Payroll is owner/manager-only and always current-month; failures
+        // (e.g. for staff) are swallowed by allSettled and just hide the card.
+        axiosClient.get(PAYROLL_ENDPOINTS.LIST, { params: { month: payrollMonth } }),
       ]);
+
+      if (payrollRes.status === "fulfilled") {
+        const pd = payrollRes.value.data?.data;
+        const t = pd?.totals ?? {};
+        setSalaryStats({
+          payable: t.totalPayable ?? 0,
+          paid: t.paidAmount ?? 0,
+          pending: t.pendingAmount ?? 0,
+          paidCount: t.paidCount ?? 0,
+          pendingCount: t.pendingCount ?? 0,
+          mechanicsCount: pd?.mechanics?.length ?? 0,
+        });
+        setSalaryMechanics(pd?.mechanics ?? []);
+      }
 
       if (expStatsRes.status === "fulfilled") {
         setExpStats(
@@ -812,6 +1052,18 @@ export default function AccountsScreen() {
       if (incStatsRes.status === "fulfilled")
         setIncStats(
           incStatsRes.value.data?.data ?? { total: 0, paid: 0, credit: 0 },
+        );
+      if (marginRes.status === "fulfilled")
+        setMarginStats(
+          marginRes.value.data?.data ?? {
+            revenue: 0,
+            tax: 0,
+            netRevenue: 0,
+            partsCost: 0,
+            margin: 0,
+            marginPercent: 0,
+            invoiceCount: 0,
+          },
         );
       if (expListRes.status === "fulfilled") {
         const d = expListRes.value.data?.data;
@@ -876,6 +1128,46 @@ export default function AccountsScreen() {
         },
       },
     ]);
+  };
+
+  // Record a mechanic's salary as an expense, straight from accounting.
+  // On success we reload so both the salary status and the expense totals move.
+  const handlePaySalary = (mechanic) => {
+    if (!(Number(mechanic.totalPayable) > 0)) {
+      Alert.alert(
+        "Set salary first",
+        "Set this mechanic's base salary in Payroll before recording a payment.",
+      );
+      return;
+    }
+    Alert.alert(
+      "Record salary",
+      `Add ${fmt(mechanic.totalPayable)} salary for ${mechanic.fullName || "this mechanic"} as a paid expense this month?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Record",
+          onPress: async () => {
+            try {
+              setPayingSalaryId(mechanic.mechanicId);
+              await axiosClient.post(PAYROLL_ENDPOINTS.PAY(mechanic.mechanicId), {
+                month: currentMonthParam(),
+              });
+              await loadAll();
+            } catch (err) {
+              Alert.alert(
+                "Error",
+                err?.response?.data?.message ||
+                  err.displayMessage ||
+                  "Could not record salary.",
+              );
+            } finally {
+              setPayingSalaryId(null);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const net = incStats.total - expStats.total - poStats.credit;
@@ -1035,6 +1327,17 @@ export default function AccountsScreen() {
                 label="TOTAL EXPENSE"
                 icon="trending-down-outline"
               />
+              <SalaryCard
+                stats={salaryStats}
+                mechanics={salaryMechanics}
+                payingId={payingSalaryId}
+                onPay={handlePaySalary}
+                monthLabel={new Date().toLocaleDateString("en-IN", {
+                  month: "short",
+                  year: "numeric",
+                })}
+                onView={() => navigation.navigate("More", { screen: "Payroll" })}
+              />
               <SectionHeader
                 title="Recent Expenses"
                 count={expenses.length}
@@ -1176,6 +1479,7 @@ export default function AccountsScreen() {
                 label="TOTAL INCOME"
                 icon="trending-up-outline"
               />
+              <MarginCard stats={marginStats} />
               <SectionHeader title="Recent Invoices" count={invoices.length} />
               {invoices.length === 0 ? (
                 <View style={s.emptyWrap}>
@@ -1556,6 +1860,156 @@ const s = StyleSheet.create({
     color: COLORS.white,
   },
 
+  // Salary (payroll) card
+  salaryCard: {
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    padding: SIZES.md,
+    ...SHADOWS.sm,
+  },
+  salaryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  salaryHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SIZES.sm,
+    flex: 1,
+    minWidth: 0,
+  },
+  salaryIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  salaryEyebrow: {
+    fontFamily: FONTS.medium,
+    fontSize: 10,
+    color: COLORS.textMuted,
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+  },
+  salaryValue: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textMd,
+    color: COLORS.textPrimary,
+    marginTop: 1,
+  },
+  salaryValueSub: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+  },
+  salaryViewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    paddingHorizontal: SIZES.sm + 2,
+    paddingVertical: 6,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.primaryLight,
+  },
+  salaryViewText: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textXs,
+    color: COLORS.primary,
+  },
+  salaryStatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: SIZES.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    paddingTop: SIZES.sm,
+  },
+  salaryStat: { flex: 1, alignItems: "center" },
+  salaryStatValue: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textBase,
+  },
+  salaryStatLabel: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  salaryStatDivider: { width: 1, height: 28, backgroundColor: COLORS.borderLight },
+
+  // Salary mechanic rows
+  salaryList: {
+    marginTop: SIZES.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+  salaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SIZES.sm,
+    paddingTop: SIZES.sm,
+    marginTop: SIZES.sm,
+  },
+  salaryAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  salaryAvatarText: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textSm,
+    color: COLORS.primary,
+  },
+  salaryName: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textSm,
+    color: COLORS.textPrimary,
+  },
+  salaryRowSub: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+    marginTop: 1,
+  },
+  salaryPaidPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: SIZES.sm,
+    paddingVertical: 5,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.successLight,
+  },
+  salaryPaidText: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textXs,
+    color: COLORS.success,
+  },
+  salaryPayBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    minWidth: 64,
+    paddingHorizontal: SIZES.sm + 2,
+    paddingVertical: 7,
+    borderRadius: SIZES.radiusFull,
+    backgroundColor: COLORS.primary,
+  },
+  salaryPayText: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textXs,
+    color: COLORS.white,
+  },
+
   // Summary card
   summaryCard: {
     backgroundColor: COLORS.bgCard,
@@ -1646,6 +2100,119 @@ const s = StyleSheet.create({
     letterSpacing: -0.2,
   },
   dot: { width: 8, height: 8, borderRadius: SIZES.radiusFull },
+
+  // Margin card
+  marginCard: {
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    padding: SIZES.md,
+    gap: SIZES.sm,
+    ...SHADOWS.sm,
+  },
+  marginHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  marginHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SIZES.sm,
+  },
+  marginIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: SIZES.radiusSm,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  marginEyebrow: {
+    fontFamily: FONTS.medium,
+    fontSize: 10,
+    color: COLORS.textMuted,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  marginValue: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textLg,
+    color: COLORS.textPrimary,
+    letterSpacing: -0.3,
+    marginTop: 1,
+  },
+  marginPctBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: COLORS.successLight,
+    paddingHorizontal: SIZES.sm,
+    paddingVertical: 4,
+    borderRadius: SIZES.radiusFull,
+  },
+  marginPctText: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textSm,
+    color: COLORS.success,
+  },
+  marginBar: {
+    height: 8,
+    flexDirection: "row",
+    backgroundColor: COLORS.bgSection,
+    borderRadius: 4,
+    overflow: "hidden",
+    marginTop: 2,
+  },
+  marginBarCost: { backgroundColor: COLORS.warning, height: "100%" },
+  marginBarProfit: { backgroundColor: COLORS.success, height: "100%" },
+  marginLegendRow: { flexDirection: "row", gap: SIZES.md },
+  marginLegendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+  marginLegendText: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textSecondary,
+  },
+  marginBreakdown: {
+    backgroundColor: COLORS.bgSection,
+    borderRadius: SIZES.radiusMd,
+    padding: SIZES.sm + 2,
+    gap: 6,
+    marginTop: 2,
+  },
+  marginRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  marginRowLabel: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textSm,
+    color: COLORS.textSecondary,
+  },
+  marginRowValue: {
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textSm,
+    color: COLORS.textPrimary,
+  },
+  marginRowDivider: { height: 1, backgroundColor: COLORS.borderLight },
+  marginRowTotalLabel: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textBase,
+    color: COLORS.textPrimary,
+  },
+  marginRowTotalValue: {
+    fontFamily: FONTS.extrabold,
+    fontSize: SIZES.textMd,
+    color: COLORS.success,
+  },
+  marginFootnote: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+    textAlign: "center",
+  },
 
   // List card
   listCard: {

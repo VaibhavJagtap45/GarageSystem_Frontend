@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   Animated,
   TextInput,
+  Switch,
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -638,6 +639,41 @@ export default function CounterSaleScreen() {
   // Repair order link (for prefill tracking)
   const repairOrderId = prefill?.repairOrderId ?? null;
 
+  // ── Service reminder (km-based; auto WhatsApp + push to customer) ──
+  const vehicle = prefill?.vehicle ?? null;
+  const vehicleLabel = vehicle
+    ? [vehicle.vehicleBrand, vehicle.vehicleModel].filter(Boolean).join(" ") ||
+      vehicle.vehicleRegisterNo ||
+      "Vehicle"
+    : null;
+
+  // Reminder data handed over from the "Next Service Reminder" form (if the
+  // staff filled it in before billing). Pre-enables + pre-fills this section.
+  const reminderSeed = prefill?.reminder ?? null;
+
+  const [reminderEnabled, setReminderEnabled] = useState(Boolean(reminderSeed?.enabled));
+  const [serviceLabel, setServiceLabel] = useState(reminderSeed?.serviceLabel ?? "");
+  const [odometer, setOdometer] = useState(
+    prefill?.odometerReading != null
+      ? String(prefill.odometerReading)
+      : vehicle?.vehicleKmDriven != null
+        ? String(vehicle.vehicleKmDriven)
+        : "",
+  );
+  const [nextServiceKm, setNextServiceKm] = useState(
+    reminderSeed?.nextServiceKm != null ? String(reminderSeed.nextServiceKm) : "",
+  );
+  const [dailyRunningKm, setDailyRunningKm] = useState(
+    reminderSeed?.dailyRunningKm != null
+      ? String(reminderSeed.dailyRunningKm)
+      : vehicle?.dailyRunningKm
+        ? String(vehicle.dailyRunningKm)
+        : "",
+  );
+
+  // Numeric-only setter for the km fields.
+  const onKmChange = (setter) => (raw) => setter(raw.replace(/[^0-9]/g, ""));
+
   // ── Add / remove ────────────────────────────────────────────────
   const addService = (item) => {
     setServices((prev) => [
@@ -750,10 +786,21 @@ export default function CounterSaleScreen() {
       const res = await axiosClient.post(INVOICE_ENDPOINTS.LIST, {
         repairOrderId: repairOrderId || undefined,
         customerId: customer._id,
+        vehicleId: vehicle?._id || undefined,
         services,
         parts,
         tags: tags.map((t) => t.name),
         discountAmount,
+        odometerReading: odometer ? Number(odometer) : undefined,
+        reminder: reminderEnabled
+          ? {
+              enabled: true,
+              serviceLabel:
+                serviceLabel.trim() || services[0]?.name || undefined,
+              nextServiceKm: nextServiceKm ? Number(nextServiceKm) : undefined,
+              dailyRunningKm: dailyRunningKm ? Number(dailyRunningKm) : undefined,
+            }
+          : undefined,
         // notifyCustomer,
       });
       const invoice = res.data?.data?.invoice;
@@ -913,6 +960,115 @@ export default function CounterSaleScreen() {
             ))}
           </View>
         </SectionBlock>
+
+        {/* SERVICE REMINDER */}
+        <View style={styles.reminderCard}>
+          <View style={styles.reminderHeader}>
+            <View style={styles.reminderHeaderLeft}>
+              <Ionicons
+                name="notifications-outline"
+                size={15}
+                color={COLORS.primary}
+              />
+              <Text style={styles.reminderHeaderText}>SERVICE REMINDER</Text>
+            </View>
+            <Switch
+              value={reminderEnabled}
+              onValueChange={(v) => {
+                setReminderEnabled(v);
+                if (v && !serviceLabel && services[0]?.name) {
+                  setServiceLabel(services[0].name);
+                }
+              }}
+              trackColor={{ true: COLORS.primary, false: COLORS.border }}
+              thumbColor={COLORS.white}
+            />
+          </View>
+
+          {reminderEnabled ? (
+            <View style={styles.reminderBody}>
+              {vehicleLabel ? (
+                <View style={styles.reminderVehicleRow}>
+                  <Ionicons
+                    name="car-outline"
+                    size={13}
+                    color={COLORS.textSecondary}
+                  />
+                  <Text style={styles.reminderVehicleText} numberOfLines={1}>
+                    {vehicleLabel}
+                    {vehicle?.vehicleRegisterNo
+                      ? ` · ${vehicle.vehicleRegisterNo}`
+                      : ""}
+                  </Text>
+                </View>
+              ) : null}
+
+              <Text style={styles.reminderFieldLabel}>Service</Text>
+              <TextInput
+                value={serviceLabel}
+                onChangeText={setServiceLabel}
+                placeholder="e.g. Engine Oil Change"
+                placeholderTextColor={COLORS.textMuted}
+                style={styles.reminderInput}
+              />
+
+              <View style={styles.reminderRow}>
+                <View style={styles.reminderHalf}>
+                  <Text style={styles.reminderFieldLabel}>Odometer (km)</Text>
+                  <TextInput
+                    value={odometer}
+                    onChangeText={onKmChange(setOdometer)}
+                    placeholder="0"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="number-pad"
+                    style={styles.reminderInput}
+                  />
+                </View>
+                <View style={styles.reminderHalf}>
+                  <Text style={styles.reminderFieldLabel}>Next service (km)</Text>
+                  <TextInput
+                    value={nextServiceKm}
+                    onChangeText={onKmChange(setNextServiceKm)}
+                    placeholder="e.g. 3000"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="number-pad"
+                    style={styles.reminderInput}
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.reminderFieldLabel}>
+                Daily running (km/day)
+              </Text>
+              <TextInput
+                value={dailyRunningKm}
+                onChangeText={onKmChange(setDailyRunningKm)}
+                placeholder="e.g. 40 — used to predict the due date"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="number-pad"
+                style={styles.reminderInput}
+              />
+
+              <View style={styles.reminderHintRow}>
+                <Ionicons
+                  name="logo-whatsapp"
+                  size={13}
+                  color={COLORS.success}
+                />
+                <Text style={styles.reminderHint}>
+                  We&apos;ll WhatsApp + notify{" "}
+                  {customer?.fullName || "the customer"} when the next service is
+                  near.
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.reminderCollapsedHint}>
+              Auto-remind the customer for their next service (WhatsApp + app
+              notification).
+            </Text>
+          )}
+        </View>
 
         {/* SUMMARY */}
         <View style={styles.summaryBlock}>
@@ -1433,6 +1589,96 @@ const styles = StyleSheet.create({
   },
 
   // Summary
+  // ── Service reminder card ─────────────────────────────────────
+  reminderCard: {
+    backgroundColor: COLORS.bgCard,
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    padding: SIZES.md,
+    marginBottom: SIZES.md,
+    ...SHADOWS.sm,
+  },
+  reminderHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  reminderHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  reminderHeaderText: {
+    fontFamily: FONTS.bold,
+    fontSize: SIZES.textXs,
+    letterSpacing: 0.6,
+    color: COLORS.textSecondary,
+  },
+  reminderCollapsedHint: {
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+    marginTop: 6,
+    lineHeight: 17,
+  },
+  reminderBody: {
+    marginTop: SIZES.sm,
+    gap: 6,
+  },
+  reminderVehicleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: COLORS.bgSection,
+    borderRadius: SIZES.radiusSm,
+    paddingHorizontal: SIZES.sm,
+    paddingVertical: 6,
+    marginBottom: 4,
+  },
+  reminderVehicleText: {
+    flex: 1,
+    fontFamily: FONTS.medium,
+    fontSize: SIZES.textXs,
+    color: COLORS.textSecondary,
+  },
+  reminderRow: {
+    flexDirection: "row",
+    gap: SIZES.sm,
+  },
+  reminderHalf: { flex: 1 },
+  reminderFieldLabel: {
+    fontFamily: FONTS.medium,
+    fontSize: SIZES.textXs,
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+    marginTop: 2,
+  },
+  reminderInput: {
+    backgroundColor: COLORS.bgInput,
+    borderRadius: SIZES.radiusSm,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    paddingHorizontal: SIZES.sm + 2,
+    paddingVertical: Platform.OS === "ios" ? 10 : 8,
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textSm,
+    color: COLORS.textPrimary,
+  },
+  reminderHintRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 5,
+    marginTop: 4,
+  },
+  reminderHint: {
+    flex: 1,
+    fontFamily: FONTS.regular,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+    lineHeight: 16,
+  },
+
   summaryBlock: {
     backgroundColor: COLORS.bgCard,
     borderRadius: SIZES.radiusLg,

@@ -16,6 +16,7 @@ import { COLORS, FONTS, SIZES, SHADOWS } from "../utils/constants";
 import ServiceScreen from "../screens/services/ServiceScreen";
 import CalendarScreen from "../screens/services/CalendarScreen";
 import CounterSaleScreen from "../screens/services/CounterSaleScreen";
+import ServiceReminderFormScreen from "../screens/services/ServiceReminderFormScreen";
 import InvoiceDetailScreen from "../screens/services/InvoiceDetailScreen";
 import InvoiceListScreen from "../screens/services/InvoiceListScreen";
 import CustomerRepairOrderScreen from "../screens/services/CustomerRepairOrderScreen";
@@ -64,6 +65,7 @@ import GstReportScreen from "../screens/more/GstReportScreen";
 import GeneralPreferencesScreen from "../screens/more/GeneralPreferencesScreen";
 import ChangePasswordScreen from "../screens/auth/OtpScreen";
 import InventoryTransfersScreen from "../screens/more/InventoryTransfersScreen";
+import PayrollScreen from "../screens/more/PayrollScreen";
 
 const Tab = createBottomTabNavigator();
 const ServiceStack = createNativeStackNavigator();
@@ -74,6 +76,10 @@ function ServiceNav() {
   return (
     <ServiceStack.Navigator screenOptions={{ headerShown: false }}>
       <ServiceStack.Screen name="ServiceHome" component={ServiceScreen} />
+      <ServiceStack.Screen
+        name="ServiceReminderForm"
+        component={ServiceReminderFormScreen}
+      />
       <ServiceStack.Screen name="CounterSale" component={CounterSaleScreen} />
       <ServiceStack.Screen
         name="InvoiceDetail"
@@ -91,6 +97,10 @@ function ServiceNav() {
       <ServiceStack.Screen name="Orders" component={OrdersScreen} />
       <ServiceStack.Screen name="PaymentDue" component={PaymentDueScreen} />
       <ServiceStack.Screen name="Calendar" component={CalendarScreen} />
+      <ServiceStack.Screen
+        name="ServiceReminders"
+        component={ServiceRemindersScreen}
+      />
     </ServiceStack.Navigator>
   );
 }
@@ -209,6 +219,7 @@ function MoreNav() {
         name="InventoryTransfers"
         component={InventoryTransfersScreen}
       />
+      <MoreStack.Screen name="Payroll" component={PayrollScreen} />
       <MoreStack.Screen
         name="ChangePassword"
         component={ChangePasswordScreen}

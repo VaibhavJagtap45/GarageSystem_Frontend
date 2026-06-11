@@ -18,6 +18,7 @@ import AppInput from "../../components/ui/AppInput";
 import AppButton from "../../components/ui/AppButton";
 import { COLORS, FONTS, SIZES, SHADOWS } from "../../utils/constants";
 import { login, register } from "../../api/auth";
+import { checkConnection } from "../../api/axios";
 import {
   saveToken,
   saveTokenExpiry,
@@ -38,6 +39,7 @@ export default function LoginScreen({ navigation }) {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [registeredBanner, setRegisteredBanner] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   const translateY = useRef(new Animated.Value(30)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -121,6 +123,8 @@ export default function LoginScreen({ navigation }) {
       Toast.show({
         type: "error",
         text1: err?.displayMessage || "Login failed. Try again.",
+        text2: err?.displayDetail || undefined,
+        visibilityTime: 5000,
       });
     } finally {
       setSubmitting(false);
@@ -147,9 +151,37 @@ export default function LoginScreen({ navigation }) {
       Toast.show({
         type: "error",
         text1: err?.displayMessage || "Registration failed. Try again.",
+        text2: err?.displayDetail || undefined,
+        visibilityTime: 5000,
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Probe the backend health endpoint so the user can tell a connectivity
+  // problem apart from a wrong password before attempting a full login.
+  const handleTestConnection = async () => {
+    setTesting(true);
+    try {
+      const result = await checkConnection();
+      if (result.ok) {
+        Toast.show({
+          type: "success",
+          text1: `Connected to ${result.host}`,
+          text2: `Server is healthy · ${result.durationMs} ms`,
+          visibilityTime: 4000,
+        });
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Connection failed",
+          text2: result.reason,
+          visibilityTime: 6000,
+        });
+      }
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -319,6 +351,24 @@ export default function LoginScreen({ navigation }) {
                   style={styles.cta}
                   accessibilityLabel={isLogin ? "Sign In" : "Create Account"}
                 />
+
+                {/* ── Connectivity helper ───────────────────────────── */}
+                <TouchableOpacity
+                  onPress={handleTestConnection}
+                  disabled={testing}
+                  style={styles.testConnRow}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel="Test connection to server"
+                >
+                  <Ionicons
+                    name={testing ? "sync-outline" : "wifi-outline"}
+                    size={14}
+                    color={COLORS.textMuted}
+                  />
+                  <Text style={styles.testConnText}>
+                    {testing ? "Testing connection…" : "Can't connect? Test connection"}
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               {/* ── Mode toggle ─────────────────────────────────────── */}
@@ -534,6 +584,21 @@ const styles = StyleSheet.create({
 
   form: { gap: SIZES.sm },
   cta: { marginTop: SIZES.md },
+
+  // ── Connectivity helper ───────────────────────────────────────
+  testConnRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: SIZES.md,
+    paddingVertical: 4,
+  },
+  testConnText: {
+    fontFamily: FONTS.medium,
+    fontSize: SIZES.textXs,
+    color: COLORS.textMuted,
+  },
 
   // ── Mode toggle ───────────────────────────────────────────────
   modeRow: {

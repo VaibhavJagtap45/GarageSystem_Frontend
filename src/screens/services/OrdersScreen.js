@@ -386,11 +386,17 @@ export default function OrdersScreen() {
         if (invoice) {
           navigation.navigate("InvoiceDetail", { invoice });
         } else {
-          // No invoice yet — open CounterSale pre-filled with repair order data
-          navigation.navigate("CounterSale", {
+          // No invoice yet — first capture the next-service reminder (vehicle
+          // auto-filled), then continue to CounterSale to bill. The form hands
+          // the reminder data to the invoice via prefill (or skips it).
+          navigation.navigate("ServiceReminderForm", {
             prefill: {
               repairOrderId: order._id,
               customer: order.customerId,
+              // Carry the vehicle + odometer so the invoice screen can offer a
+              // km-based service reminder pre-filled from the repair order.
+              vehicle: order.vehicleId ?? null,
+              odometerReading: order.odometerReading ?? null,
               services: (order.services ?? []).map((s) => ({
                 catalogId: s.catalogId,
                 name: s.name,

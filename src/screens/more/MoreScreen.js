@@ -52,6 +52,12 @@ const MENU_GROUPS = [
         onPress: (nav) => nav.navigate("InventoryTransfers"),
       },
       {
+        id: "payroll",
+        label: "Mechanic Payroll",
+        icon: "wallet-outline",
+        onPress: (nav) => nav.navigate("Payroll"),
+      },
+      {
         id: "tags_management",
         label: "Tag Management",
         icon: "pricetag-outline",
@@ -59,30 +65,30 @@ const MENU_GROUPS = [
       },
     ],
   },
-  // {
-  //   groupId: "reminders",
-  //   label: "Reminders & Feedback",
-  //   items: [
-  //     {
-  //       id: "service_reminders",
-  //       label: "Service Reminders",
-  //       icon: "notifications-outline",
-  //       onPress: (nav) => nav.navigate("ServiceReminders"),
-  //     },
-  //     {
-  //       id: "service_feedbacks",
-  //       label: "Service Feedbacks",
-  //       icon: "star-outline",
-  //       onPress: (nav) => nav.navigate("ServiceFeedbacks"),
-  //     },
-  //     {
-  //       id: "insurance_due",
-  //       label: "Insurance Due",
-  //       icon: "alarm-outline",
-  //       onPress: (nav) => nav.navigate("InsuranceDue"),
-  //     },
-  //   ],
-  // },
+  {
+    groupId: "reminders",
+    label: "Reminders & Feedback",
+    items: [
+      {
+        id: "service_reminders",
+        label: "Service Reminders",
+        icon: "notifications-outline",
+        onPress: (nav) => nav.navigate("ServiceReminders"),
+      },
+      {
+        id: "service_feedbacks",
+        label: "Service Feedbacks",
+        icon: "star-outline",
+        onPress: (nav) => nav.navigate("ServiceFeedbacks"),
+      },
+      {
+        id: "insurance_due",
+        label: "Insurance Due",
+        icon: "alarm-outline",
+        onPress: (nav) => nav.navigate("InsuranceDue"),
+      },
+    ],
+  },
   {
     groupId: "reports",
     label: "Reports & Export",

@@ -23,7 +23,13 @@ import AppSelect from "../../components/ui/AppSelect";
 import Badge from "../../components/ui/Badge";
 import Avatar from "../../components/ui/Avatar";
 import { SkeletonListItem } from "../../components/ui/SkeletonLoader";
-import { getMembers, getVendors, addUser } from "../../api/user";
+import {
+  getMembers,
+  getVendors,
+  addUser,
+  updateGarageUser,
+  deleteGarageUser,
+} from "../../api/user";
 import useAuth from "../../hooks/useAuth";
 import ContactPickerModal from "../../components/ui/ContactPickerModal";
 
@@ -50,10 +56,11 @@ const FORM_INIT = {
   phone: "",
   email: "",
   role: null,
+  baseSalary: "",
 };
 
 // ─── Action icon button ───────────────────────────────────────────────────────
-function ActionIconBtn({ icon, label, onPress }) {
+function ActionIconBtn({ icon, label, onPress, color = COLORS.primary }) {
   return (
     <TouchableOpacity
       style={styles.actionBtn}
@@ -62,13 +69,19 @@ function ActionIconBtn({ icon, label, onPress }) {
       accessibilityLabel={label}
       accessibilityRole="button"
     >
-      <Ionicons name={icon} size={18} color={COLORS.primary} />
+      <Ionicons name={icon} size={18} color={color} />
     </TouchableOpacity>
   );
 }
 
 // ─── User Card ────────────────────────────────────────────────────────────────
-function UserCard({ user, isOwner = false }) {
+function UserCard({
+  user,
+  isOwner = false,
+  canManage = false,
+  onEdit,
+  onDelete,
+}) {
   const roleMeta = ROLE_META[user.role] ?? {
     label: user.role,
     color: COLORS.primary,
@@ -124,6 +137,20 @@ function UserCard({ user, isOwner = false }) {
               </Text>
             </View>
           ) : null}
+          {user.role === "member" ? (
+            <View style={styles.metaRow}>
+              <Ionicons
+                name="cash-outline"
+                size={12}
+                color={COLORS.textMuted}
+              />
+              <Text style={styles.metaText}>
+                {user.baseSalary > 0
+                  ? `₹${Number(user.baseSalary).toLocaleString("en-IN")} / month`
+                  : "Salary not set"}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
@@ -141,6 +168,23 @@ function UserCard({ user, isOwner = false }) {
             label={`Call ${user.fullName}`}
             onPress={handleCall}
           />
+          {canManage && (
+            <>
+              <View style={styles.actionDivider} />
+              <ActionIconBtn
+                icon="create-outline"
+                label={`Edit ${user.fullName}`}
+                onPress={() => onEdit?.(user)}
+              />
+              <View style={styles.actionDivider} />
+              <ActionIconBtn
+                icon="trash-outline"
+                label={`Delete ${user.fullName}`}
+                color={COLORS.error}
+                onPress={() => onDelete?.(user)}
+              />
+            </>
+          )}
         </View>
       )}
     </View>
@@ -160,7 +204,7 @@ function AddUserModal({ visible, defaultRole, onClose, onSuccess }) {
       setForm((p) => ({
         ...p,
         firstName: parts[0] || "",
-        lastName:  parts.slice(1).join(" "),
+        lastName: parts.slice(1).join(" "),
       }));
       setErrors((p) => ({ ...p, firstName: null }));
     }
@@ -211,6 +255,10 @@ function AddUserModal({ visible, defaultRole, onClose, onSuccess }) {
         phoneNo: form.phone.trim(),
         role: form.role,
         ...(form.email.trim() && { emailId: form.email.trim() }),
+        ...(form.role === "member" &&
+          form.baseSalary.trim() && {
+            baseSalary: Number(form.baseSalary.trim()),
+          }),
       });
       const label = form.role === "vendor" ? "Vendor" : "Member";
       Alert.alert(`${label} Added`, `${fullName} has been added successfully.`);
@@ -259,7 +307,11 @@ function AddUserModal({ visible, defaultRole, onClose, onSuccess }) {
                 onPress={() => setShowContacts(true)}
                 activeOpacity={0.85}
               >
-                <Ionicons name="people-outline" size={13} color={COLORS.primary} />
+                <Ionicons
+                  name="people-outline"
+                  size={13}
+                  color={COLORS.primary}
+                />
                 <Text style={styles.importBtnText}>Import</Text>
               </TouchableOpacity>
             </View>
@@ -329,6 +381,31 @@ function AddUserModal({ visible, defaultRole, onClose, onSuccess }) {
             )}
           </View>
 
+          {/* Salary — members (mechanics) only */}
+          {form.role === "member" && (
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Salary</Text>
+              <AppInput
+                label="Monthly base salary (₹)"
+                icon="cash-outline"
+                placeholder="e.g. 15000"
+                value={form.baseSalary}
+                onChangeText={(t) =>
+                  set("baseSalary")(t.replace(/[^0-9]/g, ""))
+                }
+                keyboardType="number-pad"
+              />
+              <View style={styles.roleHint}>
+                <View style={styles.roleHintDot} />
+                <Text style={styles.roleHintText}>
+                  Optional now — you can set or update it later from Mechanic
+                  Payroll. Mechanics who cross the monthly service target earn a
+                  bonus on top.
+                </Text>
+              </View>
+            </View>
+          )}
+
           <AppButton
             title={saving ? "Adding…" : `Add ${roleLabel}`}
             variant="gradient"
@@ -344,6 +421,170 @@ function AddUserModal({ visible, defaultRole, onClose, onSuccess }) {
           onSelect={handleContactSelected}
           title={`Pick ${roleLabel} Contact`}
         />
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+// ─── Edit User Modal ──────────────────────────────────────────────────────────
+function EditUserModal({ visible, user, onClose, onSuccess }) {
+  const role = user?.role;
+  const isMember = role === "member";
+  const roleLabel = role === "vendor" ? "Vendor" : "Member";
+
+  const [form, setForm] = useState(FORM_INIT);
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (visible && user) {
+      const parts = (user.fullName || "").trim().split(/\s+/);
+      setForm({
+        firstName: parts[0] || "",
+        lastName: parts.slice(1).join(" "),
+        phone: user.phoneNo || "",
+        email: user.emailId || user.email || "",
+        role,
+        baseSalary: user.baseSalary != null ? String(user.baseSalary) : "",
+      });
+      setErrors({});
+    }
+  }, [visible, user, role]);
+
+  const set = (key) => (val) => {
+    setForm((p) => ({ ...p, [key]: val }));
+    if (errors[key]) setErrors((p) => ({ ...p, [key]: null }));
+  };
+
+  const validate = () => {
+    const e = {};
+    if (!form.firstName.trim()) e.firstName = "First name is required";
+    if (!form.phone.trim()) e.phone = "Phone number is required";
+    else if (!/^[6-9]\d{9}$/.test(form.phone.trim()))
+      e.phone = "Enter a valid 10-digit Indian mobile number";
+    setErrors(e);
+    return !Object.keys(e).length;
+  };
+
+  const handleSubmit = async () => {
+    if (!validate() || !user) return;
+    const fullName = [form.firstName.trim(), form.lastName.trim()]
+      .filter(Boolean)
+      .join(" ");
+    try {
+      setSaving(true);
+      await updateGarageUser(role, user._id, {
+        fullName,
+        phoneNo: form.phone.trim(),
+        emailId: form.email.trim() || undefined,
+        ...(isMember &&
+          form.baseSalary.trim() !== "" && {
+            baseSalary: Number(form.baseSalary.trim()),
+          }),
+      });
+      onSuccess?.(role);
+      onClose();
+    } catch (err) {
+      Alert.alert("Error", err.displayMessage || "Failed to update user.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: COLORS.bg }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Edit {roleLabel}</Text>
+          <TouchableOpacity onPress={onClose} style={styles.modalClose}>
+            <Ionicons name="close" size={20} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.modalDivider} />
+
+        <ScrollView
+          contentContainerStyle={styles.modalBody}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Basic Info</Text>
+            <View style={styles.rowFields}>
+              <View style={styles.rowField}>
+                <AppInput
+                  label="First Name *"
+                  icon="person-outline"
+                  placeholder="First name"
+                  value={form.firstName}
+                  onChangeText={set("firstName")}
+                  autoCapitalize="words"
+                  error={errors.firstName}
+                />
+              </View>
+              <View style={styles.rowField}>
+                <AppInput
+                  label="Last Name"
+                  icon="person-outline"
+                  placeholder="Last name"
+                  value={form.lastName}
+                  onChangeText={set("lastName")}
+                  autoCapitalize="words"
+                />
+              </View>
+            </View>
+            <AppInput
+              label="Phone Number *"
+              icon="call-outline"
+              placeholder="10-digit mobile number"
+              value={form.phone}
+              onChangeText={set("phone")}
+              keyboardType="phone-pad"
+              maxLength={10}
+              error={errors.phone}
+            />
+            <AppInput
+              label="Email Address"
+              icon="mail-outline"
+              placeholder="Optional"
+              value={form.email}
+              onChangeText={set("email")}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+
+          {isMember && (
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Salary</Text>
+              <AppInput
+                label="Monthly base salary (₹)"
+                icon="cash-outline"
+                placeholder="e.g. 15000"
+                value={form.baseSalary}
+                onChangeText={(t) =>
+                  set("baseSalary")(t.replace(/[^0-9]/g, ""))
+                }
+                keyboardType="number-pad"
+              />
+            </View>
+          )}
+
+          <AppButton
+            title={saving ? "Saving…" : "Save Changes"}
+            variant="gradient"
+            size="lg"
+            onPress={handleSubmit}
+            disabled={saving}
+          />
+        </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -371,6 +612,10 @@ export default function GarageUsersScreen() {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+
+  // Only owners can edit/delete garage users (backend enforces this too).
+  const canManage = authUser?.role === "owner";
 
   // ── Build the owner card from Redux auth state ────────────────────
   const ownerUser = authUser
@@ -403,10 +648,36 @@ export default function GarageUsersScreen() {
     fetchAll();
   }, [fetchAll]);
 
-  // Re-fetch after a successful add
+  // Re-fetch after a successful add / edit
   const handleAddSuccess = (role) => {
     setActiveTab(role === "vendor" ? "vendor" : "member");
     fetchAll();
+  };
+
+  // ── Edit / delete a member or vendor ─────────────────────────────
+  const handleEdit = (user) => setEditTarget(user);
+
+  const handleDelete = (user) => {
+    const noun = user.role === "vendor" ? "Vendor" : "Member";
+    Alert.alert(
+      `Delete ${noun}`,
+      `Remove ${user.fullName || `this ${noun.toLowerCase()}`}? This can't be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteGarageUser(user.role, user._id);
+              fetchAll();
+            } catch (err) {
+              Alert.alert("Error", err.displayMessage || "Could not delete.");
+            }
+          },
+        },
+      ],
+    );
   };
 
   // ── Tab data ──────────────────────────────────────────────────────
@@ -435,7 +706,14 @@ export default function GarageUsersScreen() {
       <FlatList
         data={activeData}
         keyExtractor={(item) => item._id}
-        renderItem={({ item }) => <UserCard user={item} />}
+        renderItem={({ item }) => (
+          <UserCard
+            user={item}
+            canManage={canManage}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        )}
         ItemSeparatorComponent={() => <View style={{ height: SIZES.sm }} />}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
@@ -547,21 +825,19 @@ export default function GarageUsersScreen() {
       {/* List area */}
       {renderList()}
 
-      {/* Footer add button */}
-      <View style={styles.footer}>
-        <AppButton
-          title={`+ Add ${activeTab === "vendor" ? "Vendor" : "Member"}`}
-          variant="gradient"
-          size="lg"
-          onPress={() => setShowAdd(true)}
-        />
-      </View>
-
       {/* Inline Add User Modal */}
       <AddUserModal
         visible={showAdd}
         defaultRole={activeTab}
         onClose={() => setShowAdd(false)}
+        onSuccess={handleAddSuccess}
+      />
+
+      {/* Edit User Modal */}
+      <EditUserModal
+        visible={!!editTarget}
+        user={editTarget}
+        onClose={() => setEditTarget(null)}
         onSuccess={handleAddSuccess}
       />
     </View>
@@ -749,20 +1025,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgSection,
   },
 
-  // Footer
-  footer: {
-    position: "absolute",
-    bottom: 100,
-    left: 0,
-    right: 0,
-    paddingHorizontal: SIZES.screenPadding,
-    paddingVertical: SIZES.sm,
-    paddingBottom: Platform.OS === "ios" ? 28 : SIZES.sm,
-    backgroundColor: COLORS.bg,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-  },
-
   // Add user modal
   modalHeader: {
     flexDirection: "row",
@@ -818,15 +1080,21 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.borderLight,
   },
   importBtn: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    borderWidth: 1, borderColor: COLORS.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
     borderRadius: SIZES.radiusFull,
-    paddingHorizontal: SIZES.sm + 2, paddingVertical: 4,
+    paddingHorizontal: SIZES.sm + 2,
+    paddingVertical: 4,
     backgroundColor: COLORS.primaryLight,
   },
   importBtnText: {
-    fontFamily: FONTS.semibold, fontSize: SIZES.textXs,
-    color: COLORS.primary, letterSpacing: 0.2,
+    fontFamily: FONTS.semibold,
+    fontSize: SIZES.textXs,
+    color: COLORS.primary,
+    letterSpacing: 0.2,
   },
   rowFields: { flexDirection: "row", gap: SIZES.sm },
   rowField: { flex: 1 },

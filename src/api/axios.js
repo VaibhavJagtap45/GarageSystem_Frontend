@@ -19,6 +19,15 @@ const API_BASE_URL = rawBaseUrl.trim().replace(/\/+$/, "") + "/";
 
 const hasApiBaseUrl = API_BASE_URL.length > 1;
 
+// Host:port portion for diagnostics, e.g. "192.168.1.17:4000". A regex is used
+// instead of `new URL()` to avoid depending on a URL polyfill in the RN runtime.
+export const API_HOST = (API_BASE_URL.match(/^https?:\/\/([^/]+)/) || [])[1] || "the server";
+
+// Origin (scheme + host) for the unauthenticated health-check ping. The backend
+// health route lives at the root ("/"), not under the /api/v1 prefix.
+const API_ORIGIN = (API_BASE_URL.match(/^(https?:\/\/[^/]+)/) || [])[1] || "";
+export const HEALTH_URL = API_ORIGIN ? `${API_ORIGIN}/` : "";
+
 if (!hasApiBaseUrl) {
   // In __DEV__ this surfaces the misconfig immediately; in production the
   // response interceptor below converts it into a user-facing displayMessage.
@@ -77,22 +86,41 @@ axiosClient.interceptors.response.use(
       error?.response?.data?.errors?.[0]?.msg ||
       null;
 
-    error.displayMessage = !hasApiBaseUrl
-      ? "App setup is incomplete. Rebuild the APK with API_BASE_URL configured."
-      : isTimeout
-        ? "Server is waking up, please wait a moment and try again."
-        : isNetworkError
-          ? "Unable to reach the server. Check your internet connection and API URL."
-          : serverMessage ||
-            (status === 401
-              ? "Session expired. Please login again."
-              : status === 403
-                ? "Access denied."
-                : status === 404
-                  ? "Not found."
-                  : status === 500
-                    ? "Server error. Try again later."
-                    : "Something went wrong.");
+    // Surface the *real* reason — including which host we tried to reach — so
+    // connectivity problems are diagnosable instead of a generic "went wrong".
+    if (__DEV__ && (isNetworkError || isTimeout)) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[axios] ${isTimeout ? "Timeout" : "Network error"} reaching ${API_BASE_URL} ` +
+          `(${error?.code || error?.message || "unknown"})`,
+      );
+    }
+
+    if (!hasApiBaseUrl) {
+      error.displayMessage =
+        "App setup is incomplete. Rebuild the APK with API_BASE_URL configured.";
+      error.displayDetail = null;
+    } else if (isTimeout) {
+      error.displayMessage = `Server at ${API_HOST} isn't responding.`;
+      error.displayDetail = "It may be starting up — wait a moment and try again.";
+    } else if (isNetworkError) {
+      error.displayMessage = `Can't reach the server at ${API_HOST}.`;
+      error.displayDetail =
+        "Check the backend is running and your phone is on the same Wi-Fi as the server.";
+    } else {
+      error.displayMessage =
+        serverMessage ||
+        (status === 401
+          ? "Session expired. Please login again."
+          : status === 403
+            ? "Access denied."
+            : status === 404
+              ? "Not found."
+              : status >= 500
+                ? `Server error (${status}). Try again later.`
+                : `Request failed (${status || "unknown"}).`);
+      error.displayDetail = null;
+    }
 
     // Only clear storage on 401 when the user is already authenticated.
     // During login/register there is no token yet, so skip the wipe.
@@ -108,5 +136,52 @@ axiosClient.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+// ─────────────────────────────────────────────────────────────────
+//  checkConnection — lightweight reachability probe for the login screen.
+//  Pings the backend health endpoint directly: no auth header, no API
+//  version prefix, and treats any HTTP response as "server reachable".
+//  Never throws — always resolves to a plain result object.
+// ─────────────────────────────────────────────────────────────────
+export async function checkConnection(timeoutMs = 8000) {
+  if (!HEALTH_URL) {
+    return { ok: false, host: API_HOST, reason: "API URL isn't configured in this build." };
+  }
+
+  const startedAt = Date.now();
+  try {
+    const res = await axios.get(HEALTH_URL, {
+      timeout: timeoutMs,
+      headers: { Accept: "application/json" },
+      validateStatus: () => true, // any response means the server answered
+    });
+    const durationMs = Date.now() - startedAt;
+
+    if (res.status === 200) {
+      return { ok: true, host: API_HOST, url: HEALTH_URL, status: 200, durationMs };
+    }
+    // Server is reachable but replied unexpectedly — still useful to know.
+    return {
+      ok: false,
+      host: API_HOST,
+      url: HEALTH_URL,
+      status: res.status,
+      durationMs,
+      reason: `Reached ${API_HOST}, but it replied HTTP ${res.status}.`,
+    };
+  } catch (err) {
+    const durationMs = Date.now() - startedAt;
+    const isTimeout = err?.code === "ECONNABORTED";
+    return {
+      ok: false,
+      host: API_HOST,
+      url: HEALTH_URL,
+      durationMs,
+      reason: isTimeout
+        ? `No response from ${API_HOST} — timed out after ${Math.round(timeoutMs / 1000)}s.`
+        : `Can't reach ${API_HOST} (${err?.code || "network error"}). Same Wi-Fi? Backend running?`,
+    };
+  }
+}
 
 export default axiosClient;

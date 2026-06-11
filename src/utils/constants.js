@@ -274,9 +274,10 @@ export const PURCHASE_ORDER_ENDPOINTS = {
 
 // ─── Invoices ─────────────────────────────────────────────────────────────────
 export const INVOICE_ENDPOINTS = {
-  LIST:   "/invoices",
-  STATS:  "/invoices/stats",
-  DETAIL: (id) => `/invoices/${id}`,
+  LIST:          "/invoices",
+  STATS:         "/invoices/stats",
+  MARGIN_REPORT: "/invoices/margin-report",
+  DETAIL:        (id) => `/invoices/${id}`,
 };
 
 export const STOCK_IN_ENDPOINTS = {
@@ -297,7 +298,14 @@ export const SERVICE_REMINDER_ENDPOINTS = {
   LIST:      "/service-reminders",
   CREATE:    "/service-reminders",
   MARK_DONE: (id) => `/service-reminders/${id}/done`,
+  SEND:      (id) => `/service-reminders/${id}/send`,
   DELETE:    (id) => `/service-reminders/${id}`,
+};
+
+export const PAYROLL_ENDPOINTS = {
+  LIST:   "/payroll",                                       // GET ?month=YYYY-MM
+  SALARY: (mechanicId) => `/payroll/${mechanicId}/salary`,  // PATCH { baseSalary }
+  PAY:    (mechanicId) => `/payroll/${mechanicId}/pay`,     // POST ?month=YYYY-MM
 };
 
 export const FEEDBACK_ENDPOINTS = {

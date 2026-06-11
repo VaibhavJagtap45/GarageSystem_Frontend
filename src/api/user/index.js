@@ -63,6 +63,30 @@ export const getMembers = async () => {
   }
 };
 
+//  UPDATE a garage member / vendor
+//  PUT /api/v1/members/:id   or   /api/v1/vendors/:id
+export const updateGarageUser = async (role, id, data) => {
+  const base = role === "vendor" ? "vendors" : "members";
+  try {
+    const response = await axiosClient.put(`/${base}/${id}`, data);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+//  DELETE a garage member / vendor
+//  DELETE /api/v1/members/:id   or   /api/v1/vendors/:id
+export const deleteGarageUser = async (role, id) => {
+  const base = role === "vendor" ? "vendors" : "members";
+  try {
+    const response = await axiosClient.delete(`/${base}/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 //  GET VENDORS LIST
 //  GET /api/v1/vendors
 export const getVendors = async () => {
